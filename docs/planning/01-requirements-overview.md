@@ -33,6 +33,28 @@
 ## 2. Requirement counts
 
 <!-- COUNTS:START -->
+| Area | Prefix | P1 (of which Must) | P2 | P3 | P4 | Total |
+|---|---|---|---|---|---|---|
+| Pro capabilities | CAP | 27 (24) | 10 | 6 | 1 | 44 |
+| Technical analysis & charting | TA | 21 (16) | 7 | 0 | 1 | 29 |
+| Market analysis | MA | 9 (4) | 17 | 0 | 1 | 27 |
+| Signals, scanner & alerts | SIG | 15 (14) | 2 | 0 | 0 | 17 |
+| Strategy model & builder | ST | 16 (16) | 6 | 0 | 1 | 23 |
+| Backtesting & optimization | BT | 26 (22) | 9 | 0 | 2 | 37 |
+| Paper trading | PT | 13 (11) | 1 | 2 | 0 | 16 |
+| Risk | RK | 29 (25) | 4 | 7 | 1 | 41 |
+| Portfolio & allocation | PF | 7 (5) | 7 | 1 | 0 | 15 |
+| Orders, execution & path to live | EX | 15 (15) | 3 | 9 | 1 | 28 |
+| Data | DA | 22 (16) | 3 | 0 | 0 | 25 |
+| Architecture | AR | 32 (30) | 2 | 3 | 0 | 37 |
+| Non-functional | NFR | 18 (14) | 2 | 0 | 0 | 20 |
+| Product experience | UX | 49 (45) | 4 | 2 | 1 | 56 |
+| Education & AI assistant | ED | 14 (11) | 13 | 1 | 0 | 28 |
+| Security | SEC | 16 (16) | 7 | 19 | 0 | 42 |
+| Legal, compliance & tax | CMP | 14 (14) | 4 | 8 | 3 | 29 |
+| **Total** | | **343 (298)** | **101** | **58** | **12** | **514** |
+
+Phase is the phase in which a requirement first applies (rows marked "P1 (Must P2)" count as P1). Generated from the requirement tables in docs 02–08 on 2026-10-18; regenerate after edits.
 <!-- COUNTS:END -->
 
 ## 3. "Everything pro trading firms do": capability coverage
@@ -46,10 +68,10 @@
 | **Market & technical analysis** | ~20 core indicators, multi-timeframe charts, regime and volatility labels, Market Health Summary in P1. Derivatives, on-chain, sentiment, macro, correlations and scanner in P2. Every output carries an evidence badge | P1 → P2 | TA-*, MA-*, SIG-* |
 | **C3 Signal combination** | Rule builder with ALL/ANY logic in P1; weighted/voted combinations with each signal's contribution in P2; ML in P4 | P1 → P4 | ST-015, CAP-012 |
 | **C4 Portfolio construction & capital allocation** | Strategy sleeves with manual or equal-weight allocation and a cash reserve in P1; risk parity, volatility scaling, correlation clusters, VaR/ES and multi-strategy backtests in P2 | P1 → P2 | PF-001–PF-013, CAP-013, CAP-014 |
-| **C5 Pre-trade & real-time risk** | Risk engine no strategy can bypass; layered limits (Careful risk profile by default); position sizing; loss limits and drawdown breakers; three-level kill switch; stale-data and clock-drift halts | P1 | RK-001–RK-040, CAP-015–CAP-017 |
+| **C5 Pre-trade & real-time risk** | Risk engine no strategy can bypass; layered limits (Careful risk profile by default); position sizing; loss limits and drawdown breakers; three-level kill switch; stale-data handling (no new entries) and clock-drift checks | P1 | RK-001–RK-040, CAP-015–CAP-017 |
 | **C6 Execution & transaction cost analysis (TCA)** | Real fee schedules and exchange rules; protected market orders; per-order TCA (implementation shortfall) from paper fills onward; limit-chase, TWAP and iceberg later; smart order routing in P4 | P1 → P4 | EX-009–EX-021, CAP-019–CAP-023 |
 | **C7 Post-trade analytics & attribution** | Honest reports, journal with a reason for every action, backtest-vs-paper re-simulation; P&L attribution (market, strategy, fees, slippage) in P2 | P1 → P2 | BT-034–BT-036, UX-016, CAP-024, CAP-025 |
-| **C8 Monitoring, operations & incident response** | Health checks, freshness monitor, independent watchdog, dead-man's switch, incident cards, backups; runbooks and two-channel live alerting in P3 | P1 → P3 | AR-032, CAP-026, UX-007, EX-026, EX-027 |
+| **C8 Monitoring, operations & incident response** | Health checks, freshness monitor, external heartbeat monitor (P1), dead-man's switch (P3), incident cards, backups; runbooks and two-channel live alerting in P3 | P1 → P3 | AR-032, CAP-026, UX-007, EX-026, EX-027 |
 | **C9 Research governance** | Versioned strategies; lifecycle with objective promotion gates and pre-declared kill criteria; automatic demotion; graduation scorecard | P1 → P3 | CAP-031–CAP-035, EX-022, PT-015 |
 | **C10 Treasury & counterparty management** | Reference-currency valuation, stablecoin peg monitoring, per-exchange capital caps, withdrawal-free keys, dedicated sub-accounts | P1 → P3 | RK-028–RK-031, CAP-018, CAP-036, SEC-008–SEC-016 |
 
@@ -88,7 +110,7 @@ Owned by [06 §11](06-data-and-architecture.md) and the docs named in the last c
 | Time | Host clock offset ≤ 100 ms; venue offset warning > 500 ms, new orders denied > 1,000 ms | NFR-013, RK-027 |
 | Footprint | 20 instruments + 10 paper bots on 4 vCPU / 8 GB / 100 GB SSD | NFR-014 |
 | Portability | Linux, macOS, Windows (Docker); amd64 and arm64; no cloud-vendor lock-in | NFR-015 |
-| Alerting | Owner alerted within 2 min of engine death, stale data with open positions, ledger mismatch or disk > 85% (live: always; paper: outside quiet hours) | NFR-017 |
+| Alerting | Owner alerted within 2 min of engine death, stale data while bots are running or positions are open, ledger mismatch or disk > 85% (live: always; paper: outside quiet hours) | NFR-017 |
 | Rate limits | Use at most 70% of every venue's published limits; zero IP bans | NFR-018, EX-006, AR-008 |
 | Accessibility | WCAG 2.2 AA; text and table alternatives for charts | UX-045, UX-046 |
 | Security baseline | Login + MFA even single-user; private-by-default network; hash-locked dependencies; append-only hash-chained audit log | SEC-017–SEC-031 |
@@ -102,7 +124,7 @@ Owned by [06 §11](06-data-and-architecture.md) and the docs named in the last c
 | "For now we won't trade real money … later we'll make it work with real money" | Paper trading on live data with no keys (P1); sim-live parity so live is configuration, not a rewrite; staged path to live with tiny-capital pilot (P3) | PT-001–PT-016, EX-022–EX-028, SEC-007, CAP-035 |
 | "Everything trading companies do to optimize trading, e.g. market analysis and technical analysis" | Capability map §3: data, research rigor, analysis, signal combination, portfolio, risk, execution/TCA, attribution, operations, governance, treasury | CAP-*, TA-*, MA-*, SIG-*, RK-*, PF-*, EX-* |
 | "Beginner friendly" | Guided/Pro modes, onboarding, plain-language explanations of everything, Learn hub, honest framing, no gamification, AI assistant (P2) | UX-*, ED-*, glossary |
-| "Back test trading strategies to see how they would work" | Event-driven backtester with realistic fills and costs; honest report card; P2 walk-forward, overfitting statistics, Monte Carlo and stress tests | BT-001–BT-037, CAP-002–CAP-011 |
+| "Back test trading strategies to see how they would work" | Event-driven backtester with realistic fills and costs; verdict and trust check; P2 walk-forward, overfitting statistics, Monte Carlo and stress tests | BT-001–BT-037, CAP-002–CAP-011 |
 
 ## 7. P1 definition of done
 

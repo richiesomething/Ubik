@@ -26,8 +26,8 @@ Status values: **Decided** (planning lead, owner may override) · **Provisional*
 
 | ID | Decision | Status | Why | Source |
 |---|---|---|---|---|
-| D-02 | **Build Ubik's own thin core** (strategy API, event-driven engine, simulated venue, risk, order management, ledger) in Python. **Reuse** permissively licensed libraries: ccxt (exchanges), TA-Lib (indicator reference), Lightweight Charts (charts), polars/DuckDB (data). **Don't fork** Freqtrade (GPL, one bot per process) or build on vectorbt (Commons Clause). | Provisional: the NautilusTrader spike may change it | Ubik's differentiators live in the core; licenses keep a future distribution path open | 02 §4, 06 §8 |
-| D-03 | **NautilusTrader gets a ≤ 2-week spike in Phase 0** (AR-028). Adopt it only if Ubik's strategy API, ledger and explanations sit cleanly on top and v2 is stable; otherwise revisit for P4. | Decided | Strongest open-source sim-live engine, but it's mid-rewrite (v2 release candidate in Oct 2026) | 02, 06 |
+| D-02 | **Build Ubik's own thin core** (strategy API, event-driven engine, simulated venue, risk, order management, ledger) in Python. **Reuse** permissively licensed libraries: ccxt (exchanges), TA-Lib (indicator reference), Lightweight Charts (charts), polars/DuckDB (data). **Don't fork** Freqtrade (GPL, one bot per process) or build on vectorbt (Commons Clause). | Decided. The NautilusTrader spike (AR-028) records ideas to borrow; re-evaluate only on 02 §4.4's revisit trigger | Ubik's differentiators live in the core; licenses keep a future distribution path open | 02 §4, 06 §8 |
+| D-03 | **NautilusTrader gets a ≤ 2-week spike in Phase 0** (AR-028). It produces an ADR of design ideas to borrow plus a revisit trigger; it is not an adoption gate. NautilusTrader is re-evaluated only on doc 02 §4.4's revisit trigger. | Decided | Strongest open-source sim-live engine, but it's mid-rewrite (v2 release candidate in Oct 2026) | 02, 06 |
 | D-04 | **Modular monolith**: one Python codebase deployed as `engine`, `api` and `worker` processes, plus an execution `gateway` from P3 that alone holds exchange keys. Valkey Streams between processes; SSE to the browser; Docker Compose deploy on amd64/arm64. | Decided | Simple for one developer; the gateway isolation is the main security boundary | 06 §7, 08 §4 |
 | D-08 | **Two storage roles**: PostgreSQL + TimescaleDB is the system of record (orders, fills, ledger, config, audit, recent candles). A Parquet + DuckDB lake holds history and immutable backtest snapshots. | Decided | Measured at about 17 MB per pair-year of 1m candles; reproducible snapshots | 06 §6 |
 | D-15 | **Engine in Python 3.13 with polars (not pandas) and TA-Lib; avoid pandas-ta** (unmaintained). UI in TypeScript/React with Lightweight Charts (attribution required). | Decided | Maintenance status and performance | 06 §8.2 |
@@ -109,7 +109,7 @@ Each question has the **default Ubik plans around** until you answer. Answering 
 | ID | Question | Default if unanswered |
 |---|---|---|
 | Q-07 | Do you want to write Python strategies yourself, or are templates and the rule builder enough? | Builder first; Python SDK in P2 (D-07) |
-| Q-08 | Which alert channels reliably reach you (Telegram, email, ntfy, Discord)? Quiet hours and time zone? | In-app plus one external channel (Telegram) from P1; quiet hours 23:00–07:00 in your browser's time zone |
+| Q-08 | Which alert channels reliably reach you (Telegram, email or ntfy in P1; web push and Discord from P2)? Quiet hours and time zone? | In-app plus one external channel (Telegram) from P1; quiet hours 23:00–07:00 in your browser's time zone |
 | Q-09 | Are you comfortable sending strategy and journal data (never keys) to Anthropic's API for the assistant? Or prefer a local model? | Opt-in, off until you enable it |
 | Q-10 | Starting level: Guided or Pro? Home currency and language? Any color-vision or accessibility needs? Mainly phone or desktop? | Guided; USD; English; color-blind-safe palette available; installable web app (PWA) for phone monitoring |
 | Q-11 | Do you want candlestick/chart-pattern tools for learning, labelled "Weak"? Scenario challenges? | Patterns in P2 labelled Weak; challenges in P2 |
@@ -120,7 +120,7 @@ Each question has the **default Ubik plans around** until you answer. Answering 
 
 | ID | Question | Default if unanswered |
 |---|---|---|
-| Q-14 | **What loss in a bad month would make you stop?** What drawdown could you tolerate on real money? | Safe profile limits (D-20); account drawdown halt at 20% |
+| Q-14 | **What loss in a bad month would make you stop?** What drawdown could you tolerate on real money? | Careful profile limits (D-20); account drawdown halt at 20% |
 | Q-15 | Are graduation gates (30 days paper, etc.) hard rules even for you, or overridable after a 24 h delay with a logged reason? | Duration, round-trip count and same-version rules are never overridable; other paper-stage criteria only under the Adventurous profile, with a logged reason and a 24 h delay (PT-015) |
 | Q-16 | Roughly how much might run live eventually? Split across two exchanges? | Pilot ≤ $500 per strategy; per-exchange cap set by you before arming |
 | Q-17 | If the account drawdown breaker fires at 3 a.m., should Ubik only pause and cancel (L1/L2), or also flatten positions (L3)? | Pause and cancel; no auto-flatten |
@@ -133,9 +133,9 @@ Sourced from the risk sections of docs 02–08; each doc keeps its detailed list
 
 | # | Risk | Impact | Main mitigations | Docs |
 |---|---|---|---|---|
-| R1 | **False confidence**: backtests or paper results look better than reality (overfitting, optimistic fills, look-ahead, survivorship) | Real losses in P3; owner over-trusts Ubik | Conservative fills; trial ledger and OOS vault; DSR/PBO; benchmarks; truncation tests; shadow backtests; staged rollout with tiny pilot | 02, 03, 04, 05 |
+| R1 | **False confidence**: backtests or paper results look better than reality (overfitting, optimistic fills, look-ahead, survivorship) | Real losses in P3; owner over-trusts Ubik | Conservative fills; trial ledger and OOS vault; DSR/PBO; benchmarks; truncation tests; daily parity replay; staged rollout with tiny pilot | 02, 03, 04, 05 |
 | R2 | **Scope creep** from "everything trading firms do" | P1 never ships | Phase tags; explicit non-goals; vertical slices; first-cut list ([09 §7](09-roadmap.md)) | 02, 03, 06, 09 |
-| R3 | **Sim-live parity drift** between backtest, paper and live | Graduation evidence invalid | Shared matching engine and indicator engine; parity and golden tests; daily shadow backtest | 04, 06 |
+| R3 | **Sim-live parity drift** between backtest, paper and live | Graduation evidence invalid | Shared matching engine and indicator engine; parity and golden tests; daily parity replay | 04, 06 |
 | R4 | **Jurisdiction or exchange changes** (geo-blocks, delistings, API changes) | Venue unusable; data gaps | Jurisdiction profiles; ≥ 2 venues; contract tests; self-recorded data | 06, 08 |
 | R5 | **Key theft or account takeover** (P3) | Funds drained through trades | Gateway-only keys; withdrawal refusal; IP and symbol allow-lists; sub-account; alerts on trades Ubik didn't place; kill switch | 05, 08 |
 | R6 | **Exchange insolvency, hack, or stablecoin depeg** | Funds frozen or devalued | Per-exchange capital caps; minimal balances; peg monitoring; fiat valuation | 05 |

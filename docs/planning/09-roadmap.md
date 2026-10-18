@@ -8,14 +8,14 @@
 - **P1 "Paper Trader" ships as five vertical slices.** Each slice ends with something the owner can actually use: **see the market → test an idea → trade it on paper → understand it → harden and soak**. The core pipeline (strategy → sizing → risk → order management → simulated venue) is built properly in P1, because that is what makes going live a configuration step later.
 - **Some gates are calendar time, not effort, and can't be compressed:** a 30-day unattended paper soak at the end of P1, and at least about 80 days from a strategy's first paper trade to scaled real money in P3 (paper ≥ 30 days → exchange demo ≥ 7 → shadow ≥ 14 → pilot ≥ 30). Data recording starts in P1 because free derivatives history is short.
 - **P2 "Analyst" adds research rigor, market analysis, portfolios and the AI assistant. P3 "Live" adds the security and operations needed for real money and walks one strategy through the staged rollout.** P4 is a menu of options, not a commitment.
-- **Biggest roadmap risk: scope.** P1 alone has about 280 "Must" requirements. The slice plan, the "first cut" list in §7 and strict phase discipline are the mitigations.
+- **Biggest roadmap risk: scope.** P1 alone has about 300 "Must" requirements. The slice plan, the "first cut" list in §7 and strict phase discipline are the mitigations.
 
 ## 1. Planning assumptions
 
 | Assumption | Effect if wrong |
 |---|---|
 | One developer (the owner) builds Ubik with an AI coding assistant. Effort is in **focused weeks**: one person working full time for a week | Part-time work stretches calendar time roughly in proportion. Two developers shorten P1 by maybe a third, not half, because the core is tightly coupled |
-| Decisions in [10](10-decisions-and-open-questions.md) hold, especially "build a thin own core" (D-02) and "declarative strategies only in P1" (D-07) | Adopting NautilusTrader after the spike changes M2 and M3 substantially (likely shorter build, steeper learning) |
+| Decisions in [10](10-decisions-and-open-questions.md) hold, especially "build a thin own core" (D-02) and "declarative strategies only in P1" (D-07) | If doc 02 §4.4's revisit trigger fires, re-evaluating NautilusTrader could change M2 and M3 |
 | The owner lives somewhere at least one recommended exchange is legally available | If not, Phase 0 must find a venue before M1 starts |
 | Spot trading only, long/flat, liquid majors, 1h–1d strategy bars on a 1-minute data base | Faster strategies need better data and fill models (P2 or later) |
 
@@ -24,7 +24,7 @@
 | Workstream | What happens | Output |
 |---|---|---|
 | **Owner decisions** | Answer the "before Phase 0 ends" questions in [10 §2](10-decisions-and-open-questions.md#2-open-questions-for-the-owner): country/tax residence, exchanges, trading horizon, distribution intent, hosting, budgets | Decisions recorded in doc 10 |
-| **Engine spike** (AR-028) | ≤ 2 weeks: try NautilusTrader v2 against the criteria in [06 §8.1](06-data-and-architecture.md). Can Ubik's strategy API, ledger and explanations sit cleanly on top? | Architecture decision record (ADR): own core vs Nautilus |
+| **Engine spike** (AR-028) | ≤ 2 weeks: try NautilusTrader v2 against the criteria in [06 §8.1](06-data-and-architecture.md). Which designs should Ubik's own core borrow? | Architecture decision record (ADR): design ideas to borrow and the revisit trigger (not an adoption gate) |
 | **Connectivity spike** | ccxt against the chosen venues: public WebSockets, REST backfill, rate limits, geo-blocking behavior, instrument rules, fee schedules | Adapter contract draft; venue registry entries |
 | **Data spike** | Download 5 years of 1-minute candles for 3 pairs (bulk files where available), write Parquet, query with DuckDB/polars, run quality checks | Measured storage and timings; data contract v1 |
 | **Indicator-engine spike** | Incremental (streaming) indicators vs TA-Lib batch output for ~5 indicators; truncation test for look-ahead | Choice: own engine or talipp-based |
@@ -40,7 +40,7 @@ Each slice is a vertical cut through data → engine → UI, so the owner can us
 
 | Area | Scope | Key requirements |
 |---|---|---|
-| Data | Live 1m candles and trades over WebSocket with REST fallback; ≥ 5 years of 1m backfill for the enabled venues; quick-start dataset downloaded during onboarding; daily instrument-rule snapshots; quality checks; explicit gap records; Parquet lake + Postgres | DA-001, DA-002, DA-004, DA-009–DA-015, DA-018, DA-020, DA-023 |
+| Data | Live 1m candles and trades over WebSocket with REST fallback; ≥ 5 years of 1m backfill for the enabled venues; quick-start dataset downloaded during onboarding; daily instrument-rule snapshots; quality checks; explicit gap records; Parquet lake + Postgres | DA-001, DA-002, DA-004, DA-006, DA-009–DA-015, DA-018, DA-020, DA-023–DA-025, CMP-029 |
 | Recording | Start recording the data whose free history is short: funding, open interest, long/short ratios, dominance/breadth snapshots, top of book (analysis of it ships in P2) | MA-007, MA-011, PT-010 (see [03 §8](03-market-and-technical-analysis.md)) |
 | Indicators | One closed-bar incremental indicator engine with the P1 catalog (~20 indicators), parity tests against TA-Lib, truncation (look-ahead) harness | TA-001–TA-010, TA-026, TA-028 |
 | Chart | Candles/line, overlays, sub-panes, crosshair, data window, gap shading, timeframes 1m–1w | TA-013–TA-018 |
@@ -54,7 +54,7 @@ Each slice is a vertical cut through data → engine → UI, so the owner can us
 |---|---|---|
 | Strategy model | Strategy interface with injected clock, data feed and venue; intents only; typed parameters; immutable, hashed versions; deterministic state | ST-001–ST-010 |
 | Simulated venue | One matching engine for backtest and paper; conservative fills; fees from effective-dated schedules; exchange order rules; latency; exact-decimal double-entry ledger | BT-001, BT-003–BT-016, EX-009–EX-012, AR-011, AR-012 |
-| Order management and risk | Order state machine (event-sourced, persisted before "send"); risk engine with the Careful risk profile; position sizing; protective exits; bots and sleeves | EX-001–EX-003, RK-001–RK-022, RK-035, PF-001, PF-002 |
+| Order management and risk | Order state machine (event-sourced, persisted before "send"); risk engine with the Careful risk profile; position sizing; protective exits; bots and sleeves (incl. a Manual sleeve) | EX-001–EX-003, RK-001–RK-022, RK-035, PF-001, PF-002, PF-014 |
 | Backtester | Event-driven runs as worker jobs; reproducibility manifests; golden tests; trial ledger; out-of-sample vault; grid optimization ≤ 200 combinations | BT-016, BT-017, BT-021–BT-023, CAP-002, CAP-005, CAP-006, AR-014 |
 | Templates | First 3 templates: DCA, MA crossover, Donchian breakout | ST-011 (partial) |
 | Report v1 | Plain-language summary, trust check, benchmark (buy-and-hold BTC, traded asset, cash), core metrics, trades on chart, honesty warnings above the numbers | BT-030, BT-034–BT-036, ED-002–ED-004, CAP-008 |
@@ -76,7 +76,7 @@ Each slice is a vertical cut through data → engine → UI, so the owner can us
 
 | Area | Scope | Key requirements |
 |---|---|---|
-| Strategies | Remaining templates (grid with safeguards, RSI and Bollinger mean reversion, rebalancing); no-code rule builder with plain-language readback and pre-run checks | ST-011, ST-014–ST-016, ST-018, UX-017, UX-022 |
+| Strategies | Remaining templates (grid with safeguards, RSI and Bollinger mean reversion, rebalancing); no-code rule builder with plain-language readback and pre-run checks; strategy version history | ST-011, ST-014–ST-016, ST-018, UX-017, UX-022, UX-055 |
 | Onboarding, modes and profiles | First-run onboarding and questionnaire (≤ 5 min); Guided and Pro modes; Careful/Balanced/Adventurous risk profiles with the acknowledgement flow for loosening; "never hidden" risk items; disclaimers | UX-001–UX-006, UX-023–UX-026, UX-053, CMP-017–CMP-020 |
 | Explanations | "What does this mean?" on every metric, indicator and setting, including its evidence label; glossary-driven tooltips; banned-phrase checks | ED-001, ED-006, ED-025, ED-028, SIG-011 |
 | Learning | Learn hub modules 0–9; tutorials "Your first backtest", "Make a backtest lie", "Fee eater" | ED-019–ED-021 |
@@ -97,17 +97,17 @@ Each slice is a vertical cut through data → engine → UI, so the owner can us
 
 | Milestone | Scope | Exit |
 |---|---|---|
-| **M6 Research rigor** | Walk-forward analysis; random and Bayesian optimization with trial budgets; Deflated Sharpe Ratio and Probability of Backtest Overfitting; Monte Carlo; stress-test library; vectorized screener; robustness heatmaps; expectation bands | The full "honest report card" appears on every optimized strategy |
-| **M7 Market analysis** | Regimes, volatility suite, correlation and cointegration, dominance and breadth, derivatives analytics (from data recorded since M1), on-chain for BTC/ETH, sentiment and news digests, macro and event calendar; scanner; P2 alert types and channels | Each card shows source, freshness and evidence badge; every signal is backtestable without look-ahead |
+| **M6 Research rigor** | Walk-forward analysis; random and Bayesian optimization with trial budgets; Deflated Sharpe Ratio and Probability of Backtest Overfitting; Monte Carlo; stress-test library; vectorized screener; robustness heatmaps; expectation bands | The full trust check appears on every optimized strategy |
+| **M7 Market analysis** | Optional event guardrail around major events (RK-041); regimes, volatility suite, correlation and cointegration, dominance and breadth, derivatives analytics (from data recorded since M1), on-chain for BTC/ETH, sentiment and news digests, macro and event calendar; scanner; P2 alert types and channels | Each card shows source, freshness and evidence badge; every signal is backtestable without look-ahead |
 | **M8 Portfolios** | Multi-strategy sleeves with allocation methods (equal weight, risk parity, volatility-scaled); correlation monitoring; portfolio VaR/Expected Shortfall; transaction-cost analysis (TCA) dashboards | Portfolio-level risk visible; allocation changes go through risk checks |
-| **M9 Assistant and code** | Claude-powered assistant (read-only tools, cited sources, spend cap); Python strategy SDK in a sandbox; Learn module 10; "Live through a crash" and "Monkey test" tutorials; process-goal challenge scenarios | Assistant evaluation set passes (no invented numbers); sandbox escape tests pass |
+| **M9 Assistant and code** | Claude-powered assistant (read-only tools, cited sources, spend cap; CMP-028); Python strategy SDK, Python indicators and plugins in a sandbox process (ST-017, AR-037); strategy export/import (ST-023); run comparison view (UX-056); Learn module 10; "Live through a crash" and "Monkey test" tutorials; process-goal challenge scenarios | Assistant evaluation set passes (no invented numbers); sandbox escape tests pass |
 
 ## 5. P3 — "Live" (about 6–10 focused weeks + at least 80 calendar days of staged rollout)
 
 | Milestone | Scope | Exit |
 |---|---|---|
-| **M10 Pre-live foundation** | Legal/tax consult if budgeted; execution **gateway** as the only holder of exchange keys; encrypted key storage; refuse keys that can withdraw; IP allow-list; dedicated sub-account; arming flow (re-authentication, knowledge check, 24 h first-time cooling-off); live reconciliation with the exchange; exchange-native dead-man's switch where available; incident runbooks; tax-grade exports | Security review of the gateway passes; pre-live checklist ([05 §9.1](05-risk-portfolio-execution.md)) can be completed |
-| **M11 Staged rollout** | One strategy walks S1 Paper → S2 Exchange demo (≥ 7 days, or the adapter contract suite where the venue has no realistic demo) → S3 Shadow (≥ 14 days) → S4 Pilot (≤ $500, ≥ 30 days) → S5 Scaled; graduation scorecard; automatic demotion; TCA calibrates backtest cost assumptions | One strategy finishes S4 with no severity-1 incidents (G6: no strategy code changed between paper and live) |
+| **M10 Pre-live foundation** | Legal/tax consult if budgeted; decommission command with key revocation (SEC-042); webhook ingress only if TradingView-style signals are wanted (SEC-041); execution **gateway** as the only holder of exchange keys; encrypted key storage; refuse keys that can withdraw; IP allow-list; dedicated sub-account; arming flow (re-authentication, knowledge check, 24 h first-time cooling-off); live reconciliation with the exchange; exchange-native dead-man's switch where available; incident runbooks; tax-grade exports | Security review of the gateway passes; pre-live checklist ([05 §9.1](05-risk-portfolio-execution.md)) can be completed |
+| **M11 Staged rollout** | One strategy walks S1 Paper → S2 Exchange demo (≥ 7 days, or the adapter contract suite where the venue has no realistic demo) → S3 Shadow (≥ 14 days) → S4 Pilot (≤ $500, ≥ 30 days) → S5 Scaled; graduation scorecard; automatic demotion; TCA calibrates backtest cost assumptions | One strategy finishes S4 with no Critical incidents (G6: no strategy code changed between paper and live) |
 
 ## 6. P4 — "Advanced" (options, not commitments)
 
@@ -169,7 +169,7 @@ Treat these as ranges for planning conversations, not commitments. Re-estimate a
 | Risk | Mitigation |
 |---|---|
 | P1 scope (~280 Musts) causes the MVP to stall | Vertical slices with usable exits; first-cut list (§7); phase discipline |
-| Engine spike chooses NautilusTrader, and its v2 is still unstable | Keep Ubik's strategy API as a thin layer over whichever engine wins; revisit at P4 |
+| Own core proves harder than expected | Borrow designs recorded in the spike ADR (AR-028); re-evaluate NautilusTrader only on doc 02 §4.4's revisit trigger |
 | Jurisdiction rules out the preferred exchanges | Jurisdiction profiles and ≥ 2 venues from the start (AR-001) |
 | A data source changes or disappears | Self-recording from M1; source adapters; graceful degradation |
 | Paper results look better than live would | Conservative fills, daily parity replays, demo and shadow stages, tiny pilot |

@@ -459,7 +459,7 @@
 
 **Stablecoin** · *Crypto* — A crypto token designed to hold a steady value, usually $1, such as USDT or USDC. Stablecoins can lose their peg; UST collapsed in 2022.
 
-**Stale data** · *Ubik* — Market data that has stopped updating, such as no trades or quotes for more than 10 seconds. A gap in the order-book feed or a missing 1-minute bar also counts. While a coin's data is stale, Ubik opens no new positions, always lets cancellations through, and exits only with protected orders priced from fresh data. A whole exchange that is stale for over 30 seconds is paused. Stale data is a warning flag, not a *Trading state*.
+**Stale data** · *Ubik* — Market data that has stopped updating, such as no trades or quotes for more than 10 seconds. A gap in the order-book feed or a missing 1-minute bar also counts. While a coin's data is stale, Ubik opens no new positions, always lets cancellations through, and exits only with protected orders priced from fresh data. A whole exchange that is stale for over 30 seconds is paused. Stale data is a data-health flag, not a *Trading state*.
 
 **Standard deviation** · *Stats* — The typical distance of values from their average. In finance it is the usual measure of volatility.
 
@@ -513,7 +513,7 @@
 
 **Top-5 trade share** · *Backtest* — The share of a strategy's total profit that came from its five best trades. Above 50% means the result depends on a few lucky trades.
 
-**Trading state** · *Ubik* — How much trading Ubik currently allows: Running (everything), Paused (only orders that shrink positions) or Halted (cancellations only). A state can apply to everything, one exchange, one strategy or one coin, and the strictest one wins. Internally they are ACTIVE, REDUCE_ONLY and HALTED. Stale data is a warning flag, not a trading state.
+**Trading state** · *Ubik* — How much trading Ubik currently allows: Running (everything), Paused (only orders that shrink positions) or Halted (cancellations only). A state can apply to everything, one exchange, one strategy or one coin, and the strictest one wins. Internally they are ACTIVE, REDUCE_ONLY and HALTED. Stale data is a data-health flag, not a trading state.
 
 **Trailing stop** · *Order* — A stop-loss that follows the price at a set distance as it moves in your favor, locking in part of the gain.
 

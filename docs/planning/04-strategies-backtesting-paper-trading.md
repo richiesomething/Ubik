@@ -350,7 +350,7 @@ Conventions: crypto trades every day of the year, so annualization uses **365 da
 
 **Report contents** (layout in doc 07):
 
-1. **Verdict and trust check**, shown first; the honesty warnings below are its inputs (presentation in doc 07). Example: "Beat buy-and-hold BTC risk-adjusted: No · 23 trades (too few) · no bear market in the test window."
+1. **Verdict and trust check**, shown first; the honesty warnings below are its inputs (presentation in doc 07). Example: "Beat buy-and-hold BTC risk-adjusted: No · 23 round trips (too few) · no bear market in the test window."
 2. Metrics vs benchmarks.
 3. Equity curve vs benchmarks (log-scale toggle). The vault (out-of-sample) result sits in a separate panel; walk-forward OOS segments are shaded from P2.
 4. Underwater (drawdown) chart.
