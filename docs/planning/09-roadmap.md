@@ -1,6 +1,6 @@
 # Ubik — Roadmap
 
-> Status: **Draft v0.1** (2026-10-18). This turns the phases in [00 Vision & Scope](00-vision-and-scope.md) into milestones with exit criteria. The domain docs (02–08) define *what* each requirement is; this doc defines *when* and *in what order*. Effort numbers are rough and low-confidence until Phase 0 is done.
+> Status: **Draft v0.2** (2026-10-18; updated after the cross-doc consistency review). This turns the phases in [00 Vision & Scope](00-vision-and-scope.md) into milestones with exit criteria. The domain docs (02–08) define *what* each requirement is; this doc defines *when* and *in what order*. Effort numbers are rough and low-confidence until Phase 0 is done.
 
 ## Summary
 
@@ -40,11 +40,11 @@ Each slice is a vertical cut through data → engine → UI, so the owner can us
 
 | Area | Scope | Key requirements |
 |---|---|---|
-| Data | Live 1m candles and trades over WebSocket with REST fallback; ≥ 5 years of 1m backfill; daily instrument-rule snapshots; quality checks; explicit gap records; Parquet lake + Postgres | DA-001, DA-002, DA-004, DA-009–DA-015, DA-018, DA-020 |
+| Data | Live 1m candles and trades over WebSocket with REST fallback; ≥ 5 years of 1m backfill for the enabled venues; quick-start dataset downloaded during onboarding; daily instrument-rule snapshots; quality checks; explicit gap records; Parquet lake + Postgres | DA-001, DA-002, DA-004, DA-009–DA-015, DA-018, DA-020, DA-023 |
 | Recording | Start recording the data whose free history is short: funding, open interest, long/short ratios, dominance/breadth snapshots, top of book (analysis of it ships in P2) | MA-007, MA-011, PT-010 (see [03 §8](03-market-and-technical-analysis.md)) |
 | Indicators | One closed-bar incremental indicator engine with the P1 catalog (~20 indicators), parity tests against TA-Lib, truncation (look-ahead) harness | TA-001–TA-010, TA-026, TA-028 |
 | Chart | Candles/line, overlays, sub-panes, crosshair, data window, gap shading, timeframes 1m–1w | TA-013–TA-018 |
-| Platform | Login with passkey or password + TOTP, private-by-default networking, global PAPER bar with data freshness, structured logs, health endpoints, backups, Docker Compose deploy | SEC-017–SEC-022, UX-013, AR-030–AR-032 |
+| Platform | First-run bootstrap; login with passkey or password + TOTP; private-by-default networking; global PAPER bar with data freshness; structured logs, health endpoints, external heartbeat monitor; nightly backups; Docker Compose deploy; upgrade command with migrations | SEC-017–SEC-022, UX-013, AR-030–AR-032, AR-035, AR-036 |
 
 **Exit:** the owner opens Ubik from a phone over a private tunnel and sees live BTC, ETH and SOL charts with indicators. 7 days of ingestion produce no unflagged gaps.
 
@@ -54,7 +54,7 @@ Each slice is a vertical cut through data → engine → UI, so the owner can us
 |---|---|---|
 | Strategy model | Strategy interface with injected clock, data feed and venue; intents only; typed parameters; immutable, hashed versions; deterministic state | ST-001–ST-010 |
 | Simulated venue | One matching engine for backtest and paper; conservative fills; fees from effective-dated schedules; exchange order rules; latency; exact-decimal double-entry ledger | BT-001, BT-003–BT-016, EX-009–EX-012, AR-011, AR-012 |
-| Order management and risk | Order state machine (event-sourced, persisted before "send"); risk engine with the Safe profile; position sizing; protective exits; sleeves | EX-001–EX-003, RK-001–RK-022, RK-035, PF-001, PF-002 |
+| Order management and risk | Order state machine (event-sourced, persisted before "send"); risk engine with the Careful risk profile; position sizing; protective exits; bots and sleeves | EX-001–EX-003, RK-001–RK-022, RK-035, PF-001, PF-002 |
 | Backtester | Event-driven runs as worker jobs; reproducibility manifests; golden tests; trial ledger; out-of-sample vault; grid optimization ≤ 200 combinations | BT-016, BT-017, BT-021–BT-023, CAP-002, CAP-005, CAP-006, AR-014 |
 | Templates | First 3 templates: DCA, MA crossover, Donchian breakout | ST-011 (partial) |
 | Report v1 | Plain-language summary, trust check, benchmark (buy-and-hold BTC, traded asset, cash), core metrics, trades on chart, honesty warnings above the numbers | BT-030, BT-034–BT-036, ED-002–ED-004, CAP-008 |
@@ -68,7 +68,7 @@ Each slice is a vertical cut through data → engine → UI, so the owner can us
 | Paper venue | Same matching engine on live public data; no API keys; multiple paper accounts; reset/top-up | PT-001–PT-005, PT-013 |
 | Resilience | Crash-safe, event-sourced state; restart recovery; reconciliation (paper); stale-data halts; reconnect and backfill; clock-drift checks | PT-007–PT-009, EX-004–EX-007, RK-026, RK-027, NFR-005, NFR-006 |
 | Safety controls | Trading states (ACTIVE / REDUCE_ONLY / HALTED); kill switch L1–L3 from UI, CLI and API; one-tap Pause-all; loss limits and drawdown breakers live | RK-004, RK-019–RK-024, UX-014, SEC-005 |
-| Visibility | Portfolio, Risk center and Journal screens; plain-language reasons for every block; notifications in-app plus one external channel; independent watchdog / dead-man's switch | UX-008, UX-015, UX-016, RK-038, AR-021, UX-036–UX-041 |
+| Visibility | Portfolio (with account-level performance), Risk center and Journal screens; plain-language reasons for every block; notifications in-app plus one external channel you set up and test; per-bot parity report | UX-008, UX-015, UX-016, RK-038, PF-015, AR-021, UX-036–UX-041, UX-054 |
 
 **Exit:** a 14-day unattended paper run with chaos tests (kill the engine mid-order, drop the WebSocket) shows zero duplicate and zero lost orders. Kill-switch tests pass.
 
@@ -77,8 +77,8 @@ Each slice is a vertical cut through data → engine → UI, so the owner can us
 | Area | Scope | Key requirements |
 |---|---|---|
 | Strategies | Remaining templates (grid with safeguards, RSI and Bollinger mean reversion, rebalancing); no-code rule builder with plain-language readback and pre-run checks | ST-011, ST-014–ST-016, ST-018, UX-017, UX-022 |
-| Onboarding and modes | First-run onboarding and questionnaire (≤ 5 min); Guided and Pro modes; "never hidden" risk items; disclaimers | UX-001–UX-006, UX-023–UX-026, CMP-017–CMP-020 |
-| Explanations | "What does this mean?" on every metric, indicator and setting; glossary-driven tooltips; banned-phrase checks | ED-001, ED-006, ED-025, SIG-011 |
+| Onboarding, modes and profiles | First-run onboarding and questionnaire (≤ 5 min); Guided and Pro modes; Careful/Balanced/Adventurous risk profiles with the acknowledgement flow for loosening; "never hidden" risk items; disclaimers | UX-001–UX-006, UX-023–UX-026, UX-053, CMP-017–CMP-020 |
+| Explanations | "What does this mean?" on every metric, indicator and setting, including its evidence label; glossary-driven tooltips; banned-phrase checks | ED-001, ED-006, ED-025, ED-028, SIG-011 |
 | Learning | Learn hub modules 0–9; tutorials "Your first backtest", "Make a backtest lie", "Fee eater" | ED-019–ED-021 |
 | Analysis | Market Health Summary (descriptive only), trend/volatility labels, P1 alert types; evidence badges | MA-001, MA-003, SIG-001–SIG-015 |
 | Home and accessibility | Home screen; color-blind-safe palettes; chart text summaries; number and time formatting | UX-027–UX-031, UX-044–UX-052 |
@@ -87,9 +87,9 @@ Each slice is a vertical cut through data → engine → UI, so the owner can us
 
 ### M5 — "Harden and soak" (about 2–3 weeks of work, plus 30 calendar days)
 
-- **30-day unattended paper soak** with at least 3 strategies (goal G3). Daily shadow backtests measure paper-vs-backtest divergence (PT-011).
+- **30-day unattended paper soak** with at least 3 strategies (goal G3). A daily parity replay measures paper-vs-backtest divergence (PT-011).
 - Restore drill from backup. Security checklist for every P1 "Must" in doc 08. License and dependency audit.
-- Install and operations guide for self-hosting. Bug bash. Verify that every P1 "Must" is implemented and has a test.
+- Finish the self-hosting guide (AR-036) and rehearse an upgrade (AR-035). Bug bash. Verify that every P1 "Must" is implemented and has a test.
 
 **P1 exit (definition of done):** goals G1–G5 in [00 §4.1](00-vision-and-scope.md) are met, and every P1 "Must" is verified (see [01 §7](01-requirements-overview.md)).
 
@@ -107,7 +107,7 @@ Each slice is a vertical cut through data → engine → UI, so the owner can us
 | Milestone | Scope | Exit |
 |---|---|---|
 | **M10 Pre-live foundation** | Legal/tax consult if budgeted; execution **gateway** as the only holder of exchange keys; encrypted key storage; refuse keys that can withdraw; IP allow-list; dedicated sub-account; arming flow (re-authentication, knowledge check, 24 h first-time cooling-off); live reconciliation with the exchange; exchange-native dead-man's switch where available; incident runbooks; tax-grade exports | Security review of the gateway passes; pre-live checklist ([05 §9.1](05-risk-portfolio-execution.md)) can be completed |
-| **M11 Staged rollout** | One strategy walks S1 Paper → S2 Exchange demo (≥ 7 days) → S3 Shadow (≥ 14 days) → S4 Pilot (≤ $500, ≥ 30 days) → S5 Scaled; graduation scorecard; automatic demotion; TCA calibrates backtest cost assumptions | One strategy finishes S4 with no severity-1 incidents (G6: no strategy code changed between paper and live) |
+| **M11 Staged rollout** | One strategy walks S1 Paper → S2 Exchange demo (≥ 7 days, or the adapter contract suite where the venue has no realistic demo) → S3 Shadow (≥ 14 days) → S4 Pilot (≤ $500, ≥ 30 days) → S5 Scaled; graduation scorecard; automatic demotion; TCA calibrates backtest cost assumptions | One strategy finishes S4 with no severity-1 incidents (G6: no strategy code changed between paper and live) |
 
 ## 6. P4 — "Advanced" (options, not commitments)
 
@@ -123,7 +123,7 @@ Pick from these based on what P1–P3 teach:
 **First cut list.** If P1 runs long, these move to P2 first, in this order. They're valuable, but neither safety, sim-live parity nor honesty depends on them:
 1. Grid optimization (keep single runs and the trial ledger).
 2. Templates beyond the first 5.
-3. Email/Telegram alert delivery (keep in-app plus one channel for critical incidents).
+3. Alert channels beyond the first external one (keep in-app plus one external channel).
 4. Learn modules 6–9 and the tutorials (keep modules 0–5 and tooltips).
 5. Multiple paper accounts (keep one).
 6. Pro-mode extras: drawing tools, extra chart styles.
@@ -172,5 +172,5 @@ Treat these as ranges for planning conversations, not commitments. Re-estimate a
 | Engine spike chooses NautilusTrader, and its v2 is still unstable | Keep Ubik's strategy API as a thin layer over whichever engine wins; revisit at P4 |
 | Jurisdiction rules out the preferred exchanges | Jurisdiction profiles and ≥ 2 venues from the start (AR-001) |
 | A data source changes or disappears | Self-recording from M1; source adapters; graceful degradation |
-| Paper results look better than live would | Conservative fills, shadow backtests, demo and shadow stages, tiny pilot |
+| Paper results look better than live would | Conservative fills, daily parity replays, demo and shadow stages, tiny pilot |
 | Solo-developer burnout or bus factor | Small slices, ADRs, tests as documentation, AI-assisted development with `CLAUDE.md` |

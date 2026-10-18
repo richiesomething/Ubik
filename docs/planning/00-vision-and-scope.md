@@ -1,6 +1,6 @@
 # Ubik — Vision & Scope
 
-> Status: **Draft v0.1** (initial planning, 2026-10-18). Nothing has been built yet. This document frames every other planning doc in this folder; when they disagree, this one wins until a decision in [10-decisions-and-open-questions.md](10-decisions-and-open-questions.md) changes it.
+> Status: **Draft v0.2** (initial planning, 2026-10-18; updated after the cross-doc consistency review). Nothing has been built yet. This document frames every other planning doc in this folder; when they disagree, this one wins until a decision in [10-decisions-and-open-questions.md](10-decisions-and-open-questions.md) changes it.
 
 ## Summary
 
@@ -26,7 +26,7 @@ Professional firms avoid these traps through process: clean data, skeptical rese
 Ubik lets one person do the following:
 
 1. **Understand the market**: charts, indicators, market regime, volatility, derivatives, on-chain and sentiment context, each explained in plain language.
-2. **Turn ideas into strategies**: start from templates or describe an idea in words; Ubik helps build it as rules (or Python for advanced users).
+2. **Turn ideas into strategies**: start from templates or describe an idea in words; Ubik helps build it as rules (and, from P2, as sandboxed Python for advanced users).
 3. **Test them honestly**: realistic backtests with fees, slippage, and out-of-sample checks, plus clear warnings when results are probably too good to be true.
 4. **Run them safely**: paper-trade with live market data and simulated money under strict risk limits. Later, graduate proven strategies to small real-money allocations.
 5. **Learn and improve**: a trade journal, performance attribution, and an AI assistant that can answer "why did my bot do that?"
@@ -41,7 +41,7 @@ These are ordered. When two conflict, the higher one wins.
 | 2 | **Honest by default** | Never present a backtest without costs, a benchmark, and its out-of-sample result. Flag likely overfitting. No promises, hype, or gamification that encourages overtrading. Paper and live are visually unmistakable. |
 | 3 | **Sim-live parity** | One strategy codebase, one risk engine, and one order model across backtest, paper, and live. Only the clock, data feed, and exchange adapter change between modes. |
 | 4 | **Explain everything** | Every metric, indicator, signal, warning, and blocked trade has a "what does this mean?" explanation. |
-| 5 | **Pro depth, beginner surface** | Progressive disclosure: Beginner mode shows the essentials with sensible defaults, and Pro mode exposes the full toolkit. Risk information is never hidden in either mode. |
+| 5 | **Pro depth, beginner surface** | Progressive disclosure: Guided mode shows the essentials with sensible defaults, and Pro mode exposes the full toolkit. The mode changes presentation only; risk limits come from the risk profile (Careful by default). Risk information is never hidden in either mode. |
 | 6 | **Evidence over folklore** | Analysis features carry an honest "how reliable is this?" label. Anything that can drive a strategy must be backtestable without look-ahead. |
 | 7 | **Own your data and keys** | Self-hostable, single-user first. Your keys, trades, and strategies stay on infrastructure you control. Secrets are never sent to the AI assistant. |
 | 8 | **Reproducible** | Any backtest can be re-run to the same result: pinned data snapshot, config, and code version. |
@@ -54,8 +54,8 @@ These are ordered. When two conflict, the higher one wins.
 |---|---|
 | G1. A beginner can get from zero to a first meaningful backtest quickly | A first-time user goes from first launch to a completed backtest of a template strategy, plus a plain-language summary of the result, in **≤ 10 minutes** without outside help |
 | G2. Backtests are trustworthy | Golden-test strategies reproduce independently computed results exactly (to the smallest currency unit). Re-running any saved backtest gives identical results. Every report includes fees, slippage, a benchmark, and out-of-sample results |
-| G3. Paper trading behaves like real trading would | For the same period, paper-trading results and a backtest replay stay within an agreed tolerance (see the backtesting doc). Paper trading runs **30 days unattended** with no lost state, and restarts never duplicate orders |
-| G4. Risk controls always hold | 100% of orders that violate a configured limit are blocked in automated tests across all three modes. The kill switch flattens and halts within seconds |
+| G3. Paper trading behaves like real trading would | A daily **parity replay** of the paper period matches paper trading: signal match ≥ 95% and mean fill difference ≤ 1.5× the modeled slippage ([04 §8.5](04-strategies-backtesting-paper-trading.md), PT-011). Paper trading runs **30 days unattended** with no lost state, and restarts never duplicate orders |
+| G4. Risk controls always hold | 100% of orders that violate a configured limit are blocked in automated tests across all three modes. "Pause all" is one tap away, and the kill switch (level L2) halts trading and cancels all open orders within 10 seconds ([05 §4.3](05-risk-portfolio-execution.md)) |
 | G5. Everything is explained | 100% of the metrics, indicators, and warnings shown have a plain-language explanation and a glossary entry |
 | G6. Live trading is a configuration change, not a rewrite (P3) | Switching a graduated strategy from paper to live needs no strategy code changes. Only the account, keys, and capital allocation change |
 
@@ -65,7 +65,7 @@ These are ordered. When two conflict, the higher one wins.
 - **Holding user funds (custody).** Ubik never holds money; it trades through the user's own exchange accounts. **Withdrawal permissions are refused.**
 - **Managing other people's money, or selling signals and copy-trading**, at least until a legal review (see the security & compliance doc). That changes the regulatory picture entirely.
 - **Guaranteed returns or "set and forget" marketing.** Ubik is a tool for disciplined experimentation, not a money printer.
-- **Native mobile apps in P1.** The web UI must be usable on mobile, and push notifications come later.
+- **Native mobile apps.** The web UI must be usable on mobile (an installable web app). Alerts reach you through an external channel such as Telegram, email or ntfy from P1; web push comes in P2.
 - **DeFi/DEX trading and leverage in P1–P3.** Leveraged derivatives are P4, behind extra safeguards.
 
 ## 5. Users
@@ -82,9 +82,9 @@ Ubik is **single-user and self-hosted first**. The architecture keeps a path to 
 
 | Phase | Name | Scope (headline) | Real money? |
 |---|---|---|---|
-| **P1** | MVP "Paper Trader" | Market data for a few major spot pairs on 1–2 exchanges; charting and core indicators; template and rule-based strategies; realistic event-driven backtester; paper trading with simulated balances; core risk engine and kill switch; beginner onboarding, explanations, and glossary | No |
-| **P2** | "Analyst" | Market regimes, volatility, correlations, derivatives, on-chain and sentiment analysis; scanner and alerts; walk-forward optimization with overfitting statistics; multi-strategy portfolios; AI assistant; richer reports and journal | No |
-| **P3** | "Live" | Real exchange trading with staged rollout (shadow mode, then tiny capital, then scaled), graduation criteria, hardened security, reconciliation, monitoring and alerting, incident runbooks, tax exports | **Yes, small and staged** |
+| **P1** | MVP "Paper Trader" | Market data for a few major spot pairs on the 1–2 exchanges of your jurisdiction profile; charting and core indicators; watchlist and basic alerts; template and rule-based strategies; realistic event-driven backtester; paper trading with simulated balances; the full strategy → risk → order-management pipeline with kill switch; beginner onboarding, explanations, and glossary | No |
+| **P2** | "Analyst" | Market regimes, volatility, correlations, derivatives, on-chain and sentiment analysis; full scanner and advanced alerts; walk-forward optimization with overfitting statistics; portfolio allocation methods and portfolio-level risk; AI assistant; sandboxed Python strategies; richer reports and journal | No |
+| **P3** | "Live" | Real exchange trading with staged rollout (exchange demo, read-only shadow, tiny-capital pilot, then scaled), graduation criteria, hardened security, reconciliation with the exchange, monitoring and alerting, incident runbooks, tax exports | **Yes, small and staged** |
 | **P4** | "Advanced" | Derivatives and leverage (with extra guardrails), ML-assisted strategies, multi-exchange execution, market making, possibly multi-user | Yes |
 
 [09-roadmap.md](09-roadmap.md) breaks these into milestones with exit criteria.
@@ -96,7 +96,7 @@ Ubik is **single-user and self-hosted first**. The architecture keeps a path to 
 | Users | Single owner, self-hosted (home machine or small VPS) | Decisions log |
 | Markets | Spot crypto on major centralized exchanges; BTC, ETH, SOL and similar liquid pairs first | [06](06-data-and-architecture.md) |
 | Data | Live market data even in paper mode; free or low-cost sources first | [06](06-data-and-architecture.md) |
-| Stack (hypothesis) | Python engine and analysis; TypeScript/React web UI; PostgreSQL plus a time-series or columnar store | [06](06-data-and-architecture.md) |
+| Stack | Python 3.13 engine (polars, TA-Lib); TypeScript/React web UI; PostgreSQL + TimescaleDB as the system of record plus a Parquet/DuckDB data lake (confirmed in 06; see decisions D-02–D-15) | [06](06-data-and-architecture.md), [10](10-decisions-and-open-questions.md) |
 | AI | Claude-powered assistant for explanations and strategy drafting; never holds secrets or places trades without confirmation | [07](07-ux-and-beginner-experience.md), [08](08-security-legal-compliance.md) |
 | Jurisdiction | **Unknown.** It affects exchange choice, regulation, and tax | [10](10-decisions-and-open-questions.md) |
 | Budget | Unknown. Planning assumes a hobby budget (tens of dollars a month for hosting and AI usage) and open-source components | [10](10-decisions-and-open-questions.md) |

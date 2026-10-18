@@ -1,6 +1,6 @@
 # Ubik — Requirements Overview
 
-> Status: **Draft v0.1** (2026-10-18). This is the index to Ubik's requirements. The requirements themselves live in the domain docs (02–08). This doc shows how they fit together: what P1 must deliver, the rules every feature obeys, the non-functional targets, and how each part of the owner's brief is covered.
+> Status: **Draft v0.2** (2026-10-18; updated after the cross-doc consistency review). This is the index to Ubik's requirements. The requirements themselves live in the domain docs (02–08). This doc shows how they fit together: what P1 must deliver, the rules every feature obeys, the non-functional targets, and how each part of the owner's brief is covered.
 
 ## Summary
 
@@ -46,7 +46,7 @@
 | **Market & technical analysis** | ~20 core indicators, multi-timeframe charts, regime and volatility labels, Market Health Summary in P1. Derivatives, on-chain, sentiment, macro, correlations and scanner in P2. Every output carries an evidence badge | P1 → P2 | TA-*, MA-*, SIG-* |
 | **C3 Signal combination** | Rule builder with ALL/ANY logic in P1; weighted/voted combinations with each signal's contribution in P2; ML in P4 | P1 → P4 | ST-015, CAP-012 |
 | **C4 Portfolio construction & capital allocation** | Strategy sleeves with manual or equal-weight allocation and a cash reserve in P1; risk parity, volatility scaling, correlation clusters, VaR/ES and multi-strategy backtests in P2 | P1 → P2 | PF-001–PF-013, CAP-013, CAP-014 |
-| **C5 Pre-trade & real-time risk** | Risk engine no strategy can bypass; layered limits (Safe profile); position sizing; loss limits and drawdown breakers; three-level kill switch; stale-data and clock-drift halts | P1 | RK-001–RK-040, CAP-015–CAP-017 |
+| **C5 Pre-trade & real-time risk** | Risk engine no strategy can bypass; layered limits (Careful risk profile by default); position sizing; loss limits and drawdown breakers; three-level kill switch; stale-data and clock-drift halts | P1 | RK-001–RK-040, CAP-015–CAP-017 |
 | **C6 Execution & transaction cost analysis (TCA)** | Real fee schedules and exchange rules; protected market orders; per-order TCA (implementation shortfall) from paper fills onward; limit-chase, TWAP and iceberg later; smart order routing in P4 | P1 → P4 | EX-009–EX-021, CAP-019–CAP-023 |
 | **C7 Post-trade analytics & attribution** | Honest reports, journal with a reason for every action, backtest-vs-paper re-simulation; P&L attribution (market, strategy, fees, slippage) in P2 | P1 → P2 | BT-034–BT-036, UX-016, CAP-024, CAP-025 |
 | **C8 Monitoring, operations & incident response** | Health checks, freshness monitor, independent watchdog, dead-man's switch, incident cards, backups; runbooks and two-channel live alerting in P3 | P1 → P3 | AR-032, CAP-026, UX-007, EX-026, EX-027 |
@@ -82,14 +82,14 @@ Owned by [06 §11](06-data-and-architecture.md) and the docs named in the last c
 | Order latency | Approved intent → order leaves Ubik ≤ 300 ms p95 (excluding network) | NFR-002 |
 | Availability | Engine ≥ 99.5% per month in P1; ≥ 99.9% for live on a VPS | NFR-004 |
 | Recovery | Reconnect ≤ 5 s p95, backfill ≤ 2 min; zero duplicate orders and zero lost fills after any crash | NFR-005, NFR-006 |
-| Data durability | RPO ≤ 5 min, RTO ≤ 1 h, tested restores | NFR-012, AR-031 |
-| Backtest speed | 1 instrument × 1 year of 1m candles in ≤ 60 s on 4 vCPU / 8 GB | NFR-008, BT-018 |
+| Data durability | P1: nightly off-site backups, lose at most 24 h (RPO), restore within 4 h (RTO), one tested restore before P1 exit. P3: RPO ≤ 5 min, RTO ≤ 1 h, quarterly restore drills | NFR-012, AR-031 |
+| Backtest speed (target) | 1 instrument × 1 year of 1m candles in ≤ 60 s on 4 vCPU / 8 GB | NFR-008, BT-018 |
 | Reproducibility | Byte-identical trades and metrics for the same manifest | NFR-010 |
 | Time | Host clock offset ≤ 100 ms; venue offset warning > 500 ms, new orders denied > 1,000 ms | NFR-013, RK-027 |
 | Footprint | 20 instruments + 10 paper bots on 4 vCPU / 8 GB / 100 GB SSD | NFR-014 |
 | Portability | Linux, macOS, Windows (Docker); amd64 and arm64; no cloud-vendor lock-in | NFR-015 |
-| Alerting | Owner alerted within 2 min of engine death, stale data with open positions, ledger mismatch or disk > 85% | NFR-017 |
-| Rate limits | Stay within the configured headroom of every venue's limits; zero IP bans | NFR-018, EX-006, AR-008 |
+| Alerting | Owner alerted within 2 min of engine death, stale data with open positions, ledger mismatch or disk > 85% (live: always; paper: outside quiet hours) | NFR-017 |
+| Rate limits | Use at most 70% of every venue's published limits; zero IP bans | NFR-018, EX-006, AR-008 |
 | Accessibility | WCAG 2.2 AA; text and table alternatives for charts | UX-045, UX-046 |
 | Security baseline | Login + MFA even single-user; private-by-default network; hash-locked dependencies; append-only hash-chained audit log | SEC-017–SEC-031 |
 | Privacy | No telemetry by default; data inventory; opt-in AI data sharing | CMP-024, ED-009–ED-015 |
@@ -112,8 +112,8 @@ P1 is complete when all of the following hold. The acceptance check for each goa
 |---|---|---|
 | **G1** First meaningful backtest quickly | Moderated test: a first-time user goes from first launch to a template backtest with a plain-language summary in ≤ 10 minutes, unaided | UX-001, UX-004, ED-002 |
 | **G2** Backtests are trustworthy | Golden tests pass in CI; re-running any saved run is byte-identical; every report shows costs, benchmark and out-of-sample result | BT-016, BT-030, BT-035, CAP-006, NFR-010 |
-| **G3** Paper behaves like real trading would | 30-day unattended soak with ≥ 3 strategies; daily shadow backtest within tolerance; chaos tests show no duplicate or lost orders | PT-009, PT-011, NFR-006 |
-| **G4** Risk controls always hold | Automated tests: every limit-violating order is blocked in all modes; kill switch L1–L3 completes within its time limit | RK-001–RK-024, SEC-005 |
+| **G3** Paper behaves like real trading would | 30-day unattended soak with ≥ 3 strategies; daily parity replay within tolerance (signal match ≥ 95%, mean fill difference ≤ 1.5× modeled slippage); chaos tests show no duplicate or lost orders | PT-009, PT-011, NFR-006 |
+| **G4** Risk controls always hold | Automated tests: every limit-violating order is blocked in all modes; Pause all (L1) is one tap away and the kill switch (L2) halts and cancels all open orders within 10 s | RK-001–RK-024, SEC-005 |
 | **G5** Everything is explained | Automated check: every metric, indicator and warning has a glossary entry and an explanation | ED-001, ED-025 |
 | **All P1 Musts** | Each P1 "Must" in docs 02–08 has at least one linked test or review item | — |
 
