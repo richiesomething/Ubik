@@ -228,7 +228,7 @@ Pros at the top fee tiers pay close to nothing. This is why "fee drag" must be a
 | MEV / front-running on DEXs (profiting by jumping ahead of other users' transactions) | Harms other users; legally risky in some jurisdictions | Never |
 | Managing other people's money, copy-trading, selling signals | Regulated activity (see 08) | Only with legal review |
 | Leverage, derivatives | Beginner safety | P4 |
-| Autonomous AI trading without human confirmation | LLM traders have been erratic (§2.2) | Not by default |
+| Autonomous AI trading without human confirmation | LLM traders have been erratic (§2.3) | Not by default |
 
 ---
 
