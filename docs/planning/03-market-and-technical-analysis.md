@@ -50,6 +50,8 @@
 
 A user's own Signal Lab result (MA-022) is shown *next to* the label and never replaces it.
 
+The evidence label rates what published research says about an indicator or signal. It is separate from the backtest trust check (doc 07), which rates one backtest from Low to Higher.
+
 ### 1.3 What has, and hasn't, shown predictive value
 
 | Family | Evidence | Label |
@@ -70,7 +72,7 @@ A user's own Signal Lab result (MA-022) is shown *next to* the label and never r
 | ML return prediction | Even on large stock panels, out-of-sample R² is a fraction of a percent per month ([Gu, Kelly & Xiu 2020](https://www.nber.org/papers/w25398.pdf)). Most crypto ML studies are in-sample ([IJIM-DI 2024](https://doaj.org/article/38d750a5f9fd4328924b125548276b93)). | Untested → P4 research |
 | Volatility-managed scaling | Failed out-of-sample in equities ([Cederburg et al. 2020](https://www.lehigh.edu/~xuy219/research/COWY.pdf)). | Use for risk control (doc 05), not alpha |
 
-**Meta-evidence.** Most published finance "discoveries" are likely false positives; [Harvey, Liu & Zhu](https://papers.ssrn.com/abstract=2513152) argue for a t-statistic hurdle above 3. The more variants you try, the likelier the best one is luck ([PBO](https://papers.ssrn.com/abstract=2326253), [Deflated Sharpe](https://papers.ssrn.com/abstract=2460551)). This is why Ubik counts every variant a user tests (MA-023).
+**Meta-evidence.** Most published finance "discoveries" are likely false positives; [Harvey, Liu & Zhu](https://papers.ssrn.com/abstract=2513152) argue for a t-statistic hurdle above 3. The more variants you try, the likelier the best one is luck ([PBO](https://papers.ssrn.com/abstract=2326253), [Deflated Sharpe](https://papers.ssrn.com/abstract=2460551)). This is why Ubik counts every variant a user tests in its trial ledger (MA-023, doc 04 BT-021).
 
 ---
 
@@ -103,17 +105,17 @@ Abbreviations, once:
 
 **Patterns.**
 - **Candlestick patterns** (P2, labelled Weak): engulfing, hammer/shooting star, doji, inside bar, morning/evening star. Detected on closed bars only.
-- **Chart patterns** (P3, Could, labelled Weak): double tops, triangles, flags, head-and-shoulders. Detected only once *confirmed* (the breakout bar has closed). Each detection is stamped with the bar at which it became knowable, because pattern detectors "repaint" (they redraw history as new bars arrive).
+- **Chart patterns** (P4, Could, labelled Weak): double tops, triangles, flags, head-and-shoulders. Detected only once *confirmed* (the breakout bar has closed). Each detection is stamped with the bar at which it became knowable, because pattern detectors "repaint" (they redraw history as new bars arrive).
 
 **Multi-timeframe.**
 - Timeframes: 1m, 5m, 15m, 1h, 4h, 1d, 1w. All are built from a stored 1-minute base series with UTC boundaries.
 - A 1h strategy may read the daily trend, but it sees only the *last closed* daily bar.
 
 **Libraries** (doc 02 owns build-vs-reuse):
-- **[TA-Lib](https://pypi.org/project/TA_Lib/)** (BSD license) as the batch reference. Its wheels bundle the C library from version 0.6.5, and it supports NumPy 2.
+- **[TA-Lib](https://pypi.org/project/TA_Lib/) 0.8.2** (pinned; BSD license) as the batch reference. Its wheels have bundled the C library since version 0.6.5, and it supports NumPy 2.
 - **An incremental engine:** our own, or based on [talipp](https://github.com/nardew/talipp), which is young; evaluate it first.
-- **Avoid pandas-ta as a core dependency.** Its maintainer has signalled no further releases without sponsorship ([sponsors page](https://sponsors.ecosyste.ms/accounts/twopirllc)).
-- **Charting: [TradingView Lightweight Charts v5](https://www.tradingview.com/blog/en/tradingview-lightweight-charts-version-5-50837/)** (Apache-2.0, multi-pane, plugin "primitives"). Drawing tools are not included and must be built as plugins. Confirm its attribution terms.
+- **Avoid pandas-ta.** Its GitHub repo is gone and its last release was a beta in Sep 2025 (doc 06 §8.2; AR-025 bars unmaintained libraries).
+- **Charting: [TradingView Lightweight Charts 5.2](https://www.tradingview.com/blog/en/tradingview-lightweight-charts-version-5-50837/)** (pinned per doc 06 §8.2; multi-pane, plugin "primitives"). Its license is Apache-2.0 **plus attribution**: a NOTICE and a visible link to tradingview.com, which its `attributionLogo` option provides. Drawing tools are not included and must be built as plugins. It draws on a canvas, so Ubik builds its own accessible layer (text summary, data table, keyboard crosshair; 07 UX-046, 06 AR-027) and verifies it in the P1 spike.
 
 **Charting stance.** The chart must show what the strategy *saw and did*:
 - trade markers carrying the rule that fired;
@@ -137,7 +139,7 @@ Abbreviations, once:
 | TA-009 | Strategies, scans and alerts shall be able to reference higher timeframes. Higher-timeframe values shall update only when that bar closes. | Must | P1 | |
 | TA-010 | Repainting constructs (swing points, fractals, ZigZag, pivots, patterns, Ichimoku lagging span) shall be exposed to strategies only in confirmed form, with the lag stated. | Must | P1 | |
 | TA-011 | Ubik shall detect candlestick patterns on closed bars, labelled Weak. | Could | P2 | |
-| TA-012 | Ubik shall detect confirmed chart patterns, stamped with the bar at which each became knowable. | Could | P3 | |
+| TA-012 | Ubik shall detect confirmed chart patterns, stamped with the bar at which each became knowable. | Could | P4 | |
 | TA-013 | The chart shall offer candlestick, OHLC, line and area styles and linear/log scales. Heikin-Ashi (smoothed synthetic candles) is P2, with a permanent note that fills never occur at those prices. | Must | P1 | Common beginner backtest trap. |
 | TA-014 | The chart shall offer overlays, ≥3 sub-panes, a synced crosshair and a data window showing all values at the cursor. | Must | P1 | |
 | TA-015 | Backtest and paper/live trades shall appear as markers. Each tooltip shall show time, side, price, size, fees, P&L and the rule that fired. | Must | P1 | |
@@ -149,8 +151,8 @@ Abbreviations, once:
 | TA-021 | Ubik shall offer a bar-replay mode that hides future bars. | Should | P2 | Learning tool. |
 | TA-022 | Drawing tools shall include: horizontal line, trend line, zone, Fibonacci (labelled Weak) and text (P1); then ray, channel, measure, risk/reward tool and anchored VWAP (P2). | Should | P1/P2 | |
 | TA-023 | Drawings shall persist per user and symbol and carry a creation time. They shall be usable as alert triggers. In backtests they shall apply only from creation time. | Should | P2 | Prevents hindsight. |
-| TA-024 | Users shall be able to save layouts and indicator templates. The chart shall be usable at 375 px width with touch gestures and up to 2 sub-panes. | Should | P1 | Doc 07. |
-| TA-025 | Users shall be able to define custom indicators (rule language, later Python plugins) that work in every TA-001 consumer. They are labelled Untested. | Should | P2 | Doc 04. |
+| TA-024 | Users shall be able to save layouts and indicator templates. At phone widths (≥ 320 px, WCAG 1.4.10 reflow) the chart shall show a single pane with touch gestures and the summary sentence on top; sub-panes shall be available from tablet width up. | Should | P1 | Doc 07 owns mobile layout (§9, UX-051). |
+| TA-025 | Users shall be able to define custom indicators (rule language, later Python plugins) that work in every TA-001 consumer. They are labelled Untested. Python indicator plugins shall run only in the 08 SEC-035 sandbox. | Should | P2 | Doc 04. P1 loads first-party indicators only (08 SEC-034). Python plugins (P2+) run in the 06 AR-037 sandbox process, must declare TA-004 metadata and must pass TA-003/TA-028. |
 
 ---
 
@@ -227,7 +229,7 @@ Measures:
 
 These feed **execution and risk**: doc 05's slippage model and the scanner's liquidity filters. They are not alpha. OFI works over seconds ([Cont et al.](https://arxiv.org/pdf/1011.6402)), and a self-hosted bot paying taker fees cannot compete at that horizon.
 
-Store per-minute depth bands plus short raw windows. Full order-book diffs are heavy.
+Store per-minute depth bands (kept forever) plus raw top-20 snapshots, retained per doc 06 NFR-011. Shorter raw windows are a configurable disk-saving option, shown in the NFR-011 disk forecast. Full order-book diffs are heavy.
 
 ### 3.6 Derivatives
 
@@ -240,7 +242,7 @@ Perpetual futures ("perps": futures with no expiry, kept near spot by periodic *
 | Basis | Futures premium over spot, annualized | Quarterly futures roll over |
 | Liquidations | Forced closures that amplify moves | Binance pushes at most one per symbol per second, so it **undercounts** ([docs](https://developers.binance.com/docs/derivatives/usds-margined-futures/websocket-market-streams/Liquidation-Order-Streams)). Use as a relative gauge only |
 | Long/short ratios | Share of *accounts* net long | Definitions differ by venue. Every contract has both a long and a short side |
-| Options (P3): DVOL term structure, 25-delta skew, put/call | Demand for downside vs upside protection | "Max pain" is Weak |
+| Options (P4, Could): DVOL term structure, 25-delta skew, put/call | Demand for downside vs upside protection | "Max pain" is Weak |
 
 Ubik presents funding and OI mainly as **leverage and crowding-risk gauges**. As a contrarian *direction* signal they are Mixed.
 
@@ -266,15 +268,15 @@ Coin Metrics Community needs no key (10 requests per 6 s). Its license is **CC B
 - **Access:** a free daily API. Attribution must appear next to the data.
 - **Presentation:** a crowd-mood summary, not an independent signal.
 
-**Google Trends:** the API is an application-only alpha ([Google](https://developers.google.com/search/blog/2025/07/trends-api)). Website values are re-scaled on every query, so history must be captured point-in-time. P3.
+**Google Trends:** the API is an application-only alpha ([Google](https://developers.google.com/search/blog/2025/07/trends-api)). Website values are re-scaled on every query, so history must be captured point-in-time. P4, Could.
 
-**Social media data** (X, Reddit) is costly or restricted. P3, via a paid aggregator.
+**Social media data** (X, Reddit) is costly or restricted. P4 (Could), via a paid aggregator.
 
 **News pipeline:**
 1. Pull headlines from RSS feeds, an aggregator (CryptoPanic; verify its terms) and, most importantly for a trading bot, **exchange announcements** (listings, delistings, maintenance).
 2. Deduplicate and tag each item by asset and event type.
-3. Store headline, URL and timestamps only (copyright, doc 08).
-4. An LLM (large language model) writes cited digests with no price predictions, and the model version is logged.
+3. Store headline, URL and timestamps only, never full text (copyright; each source's terms are recorded in the 08 CMP-007 data-source registry).
+4. An LLM (large language model) writes cited digests with no price predictions, and the model version is logged. Headlines and announcements reach the LLM labelled as untrusted input (08 SEC-039).
 5. LLM-derived features enter backtests only for dates after the model's training cutoff, or with anonymized inputs ([Glasserman & Lin](https://arxiv.org/abs/2309.17322)).
 
 ### 3.9 Macro and event calendar
@@ -300,7 +302,7 @@ Coin Metrics Community needs no key (10 requests per 6 s). Its license is **CC B
 
 Uses:
 - alerts;
-- doc 05's optional "reduce size before high-impact events" guardrail;
+- doc 05's optional event guardrail (RK-041, P2), which sets a strategy to REDUCE_ONLY or scales down its new entries around high-importance events;
 - event studies, such as BTC's behavior around the last N FOMC meetings, with sample size and uncertainty.
 
 ### 3.10 MA requirements
@@ -318,18 +320,18 @@ Uses:
 | MA-009 | Ubik shall monitor spread and top-of-book depth per traded pair and flag deterioration. | Should | P1 | |
 | MA-010 | Ubik shall compute depth bands and an order-size slippage estimate, plus CVD and OFI labelled "Descriptive / short-horizon". | Should | P2 | Shared with doc 05 TCA. |
 | MA-011 | Ubik shall record funding (predicted and settled), OI and long/short ratios for BTC/ETH/SOL perps on at least one venue, starting in P1. | Should | P1 | Free history is short. |
-| MA-012 | Ubik shall display funding, OI, basis and liquidations, each with its caveat text. Options data follows in P3. | Should | P2 | |
+| MA-012 | Ubik shall display funding, OI, basis and liquidations, each with its caveat text. Options data follows in P4 (Could). | Should | P2 | |
 | MA-013 | Ubik shall ingest the free on-chain set (§3.7) for BTC/ETH, recording each source's license and attribution. Paid metrics shall be pluggable by configuration, preferring point-in-time variants. | Should | P2 | |
 | MA-014 | Ubik shall ingest Fear & Greed daily and display its attribution next to the value. | Should | P2 | |
 | MA-015 | Ubik shall ingest headlines and exchange announcements, deduplicate them, tag asset and event type, and store `published_at` and `ingested_at`. | Should | P2 | |
-| MA-016 | Ubik shall produce LLM news digests that cite sources, contain no price predictions, and log the model version. | Should | P2 | Doc 07 AI assistant. |
+| MA-016 | Ubik shall produce LLM news digests that cite sources, contain no price predictions, and log the model version. | Should | P2 | Doc 07 AI assistant. Headlines and announcements are untrusted input, labelled per 08 SEC-039; no assistant-memory writes. |
 | MA-017 | LLM-derived features shall be used in backtests only for dates after the model's training cutoff or with anonymized inputs. Otherwise the backtest shall be flagged. | Must | P2 | |
 | MA-018 | Ubik shall ingest macro series with vintage-aware storage, carrying weekend values forward with staleness flags. | Should | P2 | |
 | MA-019 | Ubik shall maintain an event calendar with `scheduled_at` and `announced_at`: the P1 set in P1 and the full set in P2. | Should | P1/P2 | |
 | MA-020 | Every analysis output shall show its source, as-of time and freshness. Stale values shall be greyed out and excluded from signals. | Must | P1 | |
 | MA-021 | When an optional source is unavailable (geo-blocked, rate-limited, discontinued), the affected card shall say why and shall never present stale values as live. | Must | P1 | |
 | MA-022 | A **Signal Lab** shall evaluate any signal's forward returns at 1h/4h/1d/7d. It shall show hit rate, mean, information coefficient (rank correlation with future returns), bootstrap confidence intervals, net-of-cost results and walk-forward splits. | Should | P2 | Research before strategy. Doc 04 owns strategy metrics. |
-| MA-023 | A multiple-testing ledger shall count every signal or parameter variant a user evaluates, show the count, and apply deflated statistics to the best result. | Should | P2 | With doc 04 DSR/PBO. |
+| MA-023 | The trial ledger (signal entries, doc 04 BT-021) shall count every signal or parameter variant a user evaluates, show the count, and apply deflated statistics to the best result. | Should | P2 | With doc 04 DSR/PBO. Same ledger as BT-021; signal entries count toward the DSR trial count of any strategy built from that signal family. |
 | MA-024 | Ubik shall provide an event-study view and statistical tests: ADF/KPSS stationarity, variance ratio, Ljung-Box, and Granger causality labelled "association, not cause". | Could | P2 | statsmodels/arch. |
 
 ---
@@ -357,7 +359,7 @@ All features are versioned and computed by the TA-001 engine.
 | Liquidity (Amihud, volume shocks) | Universe filter | Mixed | P2 |
 | Carry (funding/basis) | Positioning gauge now; trade it later | Supported | P2 view / P4 trade |
 | Value-like on-chain (MVRV, NVT) | Context card only | Weak | P2 |
-| Attention / sentiment, seasonality | Signal Lab only | Mixed / Weak | P2–P3 |
+| Attention / sentiment, seasonality | Signal Lab only | Mixed / Weak | P2 (Signal Lab); further sources P4 |
 
 ### 4.3 Why ML overfits here (ML is mostly P4)
 
@@ -417,11 +419,11 @@ This makes scan → alert → backtest → strategy one click in each direction.
 **Noise controls:** cooldowns, re-arm with hysteresis, once / once-per-bar / every-time modes, expiry, quiet hours, per-channel rate limits, deduplication.
 
 **Channels:**
-- **P1:** in-app, email, Telegram (the de-facto crypto channel).
+- **P1:** in-app, plus at least one external (out-of-app) channel the owner chooses: email, Telegram (the de-facto crypto channel) or ntfy. Further P1 channels are Should.
 - **P2:** web/PWA push, Discord, webhook.
 - **P3:** SMS (Could).
 
-Channel credentials are handled per doc 08.
+The owner adds, tests and removes channels in Settings → Notifications (07 UX-054). Channel credentials are secrets under 08 SEC-014.
 
 ### 5.4 SIG requirements
 
@@ -431,12 +433,12 @@ Channel credentials are handled per doc 08.
 | SIG-002 | Scan and alert conditions shall use the strategy builder's condition language and be convertible to and from backtestable strategies. | Must | P1 | Doc 04. |
 | SIG-003 | Ubik shall support the P1 alert types (§5.3), and the P2 types in P2. | Must | P1/P2 | |
 | SIG-004 | Alerts shall evaluate at bar close by default. Only price-level alerts may evaluate intrabar, and they shall be marked as such. Each firing shall record its evaluation time and input values. | Must | P1 | Same timing as backtests. |
-| SIG-005 | Alerts shall support cooldown, re-arm/hysteresis, trigger modes, expiry, quiet hours, per-channel rate limits and deduplication. | Must | P1 | Alert fatigue. |
-| SIG-006 | Ubik shall deliver alerts in-app (Must), by email and Telegram (Should) in P1, and by web push, Discord and webhook in P2. Delivery shall be at-least-once with a dedupe ID, with failures retried and visible. Median delivery shall be ≤10 s after bar close. | Must | P1/P2 | |
+| SIG-005 | Alerts shall support cooldown, re-arm/hysteresis, trigger modes, expiry, quiet hours, per-channel rate limits and deduplication. | Must | P1 | Alert fatigue. Critical alerts bypass quiet hours (07 UX-038). |
+| SIG-006 | Ubik shall deliver alerts in-app and via at least one owner-chosen external channel (email, Telegram or ntfy) in P1 (Must), via additional channels in P1 (Should), and by web push, Discord and webhook in P2. Delivery shall be at-least-once with a dedupe ID, with failures retried and visible. Median delivery shall be ≤10 s after bar close. | Must | P1/P2 | An external channel is needed for 06 NFR-017 and AR-021. Channel setup and testing: 07 UX-054. |
 | SIG-007 | Alert messages shall state what happened, the value, its plain meaning, the evidence label and a chart link. They shall never use imperative trade language ("buy now"). | Must | P1 | Honesty. |
 | SIG-008 | Users shall be able to backtest an alert: how often it would have fired, and the forward-return distribution after each firing. | Should | P2 | Uses MA-022. |
 | SIG-009 | Ubik shall provide a watchlist with indicator columns (P1) and a full scanner with filters, presets and timestamped snapshots (P2). | Should | P1/P2 | |
-| SIG-010 | Ubik shall raise data-health alerts for stale feeds, disconnects and gaps. | Must | P1 | Paper and live safety. |
+| SIG-010 | Ubik shall raise data-health alerts for stale feeds, disconnects and gaps. | Must | P1 | Paper and live safety. Stale thresholds, trading effects and alert timing per doc 05 §4.4 (Warning in paper, Critical in live). |
 
 ---
 
@@ -484,7 +486,7 @@ observation(series_id, asset, period_start, period_end, event_time,
 | ID | Requirement | Priority | Phase | Rationale / notes |
 |---|---|---|---|---|
 | TA-026 | All stored series shall carry `event_time`, `available_at` and `first_seen_at`. The backtester shall enforce `available_at ≤ decision time` for every input. | Must | P1 | Core guarantee. |
-| TA-027 | Revisable series shall be stored append-only with revision numbers and read as-of the decision time. | Must | P2 | |
+| TA-027 | Revisable series shall be stored append-only with revision numbers (`revision_no`) and read as-of the decision time. | Must | P2 | Doc 06 adopts these field names. |
 | TA-028 | A look-ahead harness shall run every indicator and signal on truncated data and fail if any historical output changes when future bars are appended. | Must | P1 | Catches repaint and leakage. |
 | TA-029 | Backtests using pre-capture revisable data shall display a "revised data" badge. | Must | P2 | |
 
@@ -519,42 +521,42 @@ Cards are colored by *condition* (calm/stormy, thin/deep), never by buy/sell. Th
 - Use probabilistic phrasing.
 - Give every base rate with its sample size and a range ("in 31 similar cases since 2018, BTC was higher 7 days later 55% of the time; plausible range 37–71%").
 - Below 30 cases, say "too few past cases to judge".
-- Lint copy and AI-assistant output against banned phrases ("guaranteed", "can't lose", "will pump").
+- Lint copy and AI-assistant output against the banned-phrase list in 07 ED-006 (e.g. "guaranteed", "can't lose", "will pump").
 - Contrarian indicators always show both readings.
 
 | ID | Requirement | Priority | Phase | Rationale / notes |
 |---|---|---|---|---|
-| SIG-011 | Every analysis card, alert and scan result shall follow the What / Why / How-reliable / Learn-more template. | Must | P1 | Doc 07. |
-| SIG-012 | Ubik shall maintain a versioned evidence registry (label, one-line reason, citations) for every indicator and signal, shown as a badge. User-defined items default to Untested. | Must | P1 | |
+| SIG-011 | Every analysis card, alert and scan result shall follow the What / Why / How-reliable / Learn-more template. | Must | P1 | Doc 07 (ED-001, ED-028). |
+| SIG-012 | Ubik shall maintain a versioned evidence registry (label, one-line reason, citations) for every indicator and signal, shown as a badge. User-defined items default to Untested. | Must | P1 | Shown as the How-reliable layer (07 ED-028); distinct from the backtest trust check. |
 | SIG-013 | Ubik shall provide the Market Health Summary with the P1 cards, extended in P2. | Must | P1 | |
-| SIG-014 | Beginner mode shall show no composite buy/sell score. Any composite score shall display its components, weights and out-of-sample record. | Must | P1 | Avoids false certainty. |
+| SIG-014 | Guided mode shall show no composite buy/sell score. Any composite score shall display its components, weights and out-of-sample record. | Must | P1 | Avoids false certainty. |
 | SIG-015 | Every displayed historical statistic shall include sample size, period and an uncertainty range. With n < 30, Ubik shall show "insufficient history" instead. | Must | P1 | |
-| SIG-016 | UI copy templates and AI-assistant market text shall pass an automated banned-phrase check. | Should | P1 | Doc 07. |
+| SIG-016 | UI copy templates and AI-assistant market text shall pass an automated check against the 07 ED-006 banned-phrase list. | Must | P1 | Doc 07 ED-006 owns the list. AI-assistant text is checked from P2, when the assistant ships. |
 | SIG-017 | Contrarian or ambiguous indicators shall present both interpretations. | Should | P2 | |
 
 ---
 
 ## 8. Data needs handoff (for doc 06)
 
-| Analysis item | Data | Granularity | History | Likely source (free → paid) | Phase |
+| Analysis item | Data | Granularity | History (minimum needed; retention per 06 NFR-011) | Likely source (free → paid) | Phase |
 |---|---|---|---|---|---|
-| All TA, charts, regimes | Spot OHLCV + trade count, taker-buy volume | 1m base | Full available | Exchange REST, bulk archives (data.binance.vision), WebSocket | P1 |
-| CVD, volume profile, fill realism | Trades | Tick | 30–90 days raw; aggregates kept | Exchange WS / aggTrades archives | P1 collect, P2 use |
-| Spread, depth, slippage, OFI | L2 order book | Top-20 every 1–10 s; depth bands per minute | 30 days raw; bands forever | Exchange WS | P1 basic, P2 |
+| All TA, charts, regimes | Spot OHLCV + trade count, taker-buy volume | 1m base | Full available | Exchange REST, bulk archives (data.binance.vision; access terms per doc 08 §8.5), WebSocket | P1 |
+| CVD, volume profile, fill realism | Trades | Tick | 30–90 days raw (06 keeps 2 years); aggregates kept | Exchange WS / aggTrades archives | P1 collect, P2 use |
+| Spread, depth, slippage, OFI | L2 order book | Top-20 every 1 s (≤ 5 instruments in P1, 06 DA-003); depth bands per minute | 30 days raw (06 keeps 1 year); bands forever | Exchange WS | P1 basic, P2 |
 | Watchlist, universe | Tickers, symbol rules, listings/delistings | 1 min; events | Point-in-time from P1 | Exchange REST | P1 |
 | Breadth, dominance, factors | Daily OHLCV + market cap, top 50–100 | Daily | 5+ years | CoinGecko Demo (attribution), CoinMarketCap Basic, exchange klines | P2 (snapshot from P1) |
 | Funding | Settled + predicted | Per event; 1 min | Full | Binance/Bybit/OKX public APIs; Coinalyze | P1 capture, P2 |
 | OI, long/short | OI (contracts, USD), ratios | 5 min | API 30 days → self-capture; daily archives | Binance + data.binance.vision; Coinalyze → CoinGlass ($29+/mo) | P1 capture, P2 |
 | Liquidations | Events (sampled) | Event | From capture | Exchange WS; Coinalyze → CoinGlass | P2 |
 | Basis | Futures + index prices | 1 min–1 h | Full | Exchange APIs | P2 |
-| Implied volatility | DVOL; later option chains | 1 min–1 h | DVOL since 2021 | Deribit public API | P2/P3 |
+| Implied volatility | DVOL; later option chains | 1 min–1 h | DVOL since 2021 | Deribit public API | P2; option chains P4 (Could) |
 | On-chain basic | Hash rate, transactions, active addresses, MVRV | Daily | Full | Coin Metrics Community (CC BY-NC), mempool.space | P2 |
 | On-chain advanced | Exchange flows, SOPR, NUPL | Daily/hourly | Full, point-in-time | Glassnode Professional API, CryptoQuant | P2 optional paid |
 | Stablecoins | Circulating supply | Daily | Full | DefiLlama | P2 |
 | Fear & Greed | Index | Daily | Feb 2018+ | alternative.me (attribution) | P2 |
-| Attention | Search interest | Daily/weekly | 5 years | Google Trends API alpha | P3 |
+| Attention | Search interest | Daily/weekly | 5 years | Google Trends API alpha | P4 Could |
 | News | Headline, URL, tags, timestamps | Event | Rolling | RSS, CryptoPanic (verify), exchange announcements | P2 |
-| Social sentiment | Mentions, tone | Hourly | 1+ year | LunarCrush/Santiment (paid) | P3 Could |
+| Social sentiment | Mentions, tone | Hourly | 1+ year | LunarCrush/Santiment (paid) | P4 Could |
 | Macro | Dollar, yields, VIX, equities, gold | Daily | 10+ years, with vintages | FRED/ALFRED (free key) | P2 |
 | ETF flows | Net flow per fund | Daily (T+1) | Jan 2024+ | Farside/SoSoValue → paid APIs | P2 Could |
 | Event calendar | Events with `announced_at` | Event | Forward + 5 years back | federalreserve.gov, BLS, block height, Tokenomist, manual | P1/P2 |
@@ -573,7 +575,7 @@ Cross-cutting needs for doc 06:
 1. **Which country are you in?** It determines which exchange APIs work for you. Binance.com blocks US IPs, and derivatives venues vary by country. It also determines which data sources you can legitimately use.
 2. **Which trading horizon interests you?** Minutes, hours or days? I recommend 1h–1d bars for P1: costs are smaller relative to moves, and the evidence is better.
 3. **What paid-data budget, if any?** For example, $0 now and $30–100/month in P2.
-4. **Preferred alert channels?** Telegram, email, push?
+4. **Preferred alert channel?** P1 needs at least one outside the app: Telegram, email or ntfy. Web push arrives in P2.
 5. **Is LLM news summarization worth an ongoing API cost in P2?**
 6. **Could Ubik ever become commercial or multi-user?** If so, avoid non-commercial and personal-use-only data from the start.
 7. **Do you want candlestick and chart-pattern tools for learning,** knowing they'll be labelled Weak?
@@ -588,8 +590,8 @@ Cross-cutting needs for doc 06:
 | Short free history for derivatives, dominance and sentiment | Capture from P1 (MA-007, MA-011) |
 | Free sources change terms, rate limits or geo-access | Source adapters, freshness checks, graceful degradation (MA-020/021) |
 | License limits (CC BY-NC, personal-use plans) block a future SaaS | Record license per source; review before P4 (doc 08) |
-| Mass testing in the scanner / Signal Lab "discovers" luck | Multiple-testing ledger, deflated statistics, walk-forward (MA-022/023) |
+| Mass testing in the scanner / Signal Lab "discovers" luck | Trial ledger (doc 04 BT-021, MA-023), deflated statistics, walk-forward (MA-022) |
 | Edges from 2014–2021 fade after ETFs and institutional entry | Recency-weighted evaluation, paper incubation, registry reviewed each release |
 | LLM hallucination or leakage | Cited digests, no predictions, cutoff rule, stored outputs |
 | "Everything pro firms do" scope creep (indicator bloat, high-frequency microstructure) | Phased catalog; microstructure positioned as execution context, not alpha |
-| Alert fatigue; order-book storage costs | Noise controls (SIG-005); depth bands with short raw retention |
+| Alert fatigue; order-book storage costs | Noise controls (SIG-005); per-minute depth bands; raw retention per 06 NFR-011, with P1 L2 recording capped at ≤ 5 instruments and shorter raw windows as a configurable disk-saving option |

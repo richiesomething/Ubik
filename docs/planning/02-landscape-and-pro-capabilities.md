@@ -9,15 +9,15 @@
 - **There is a clear gap in the market.** Hosted retail bots (3Commas, Cryptohopper, Bitsgap, Coinrule, Pionex, exchange-native grid/DCA bots) are easy to use. But their backtests are shallow and run on candles only, they show no overfitting statistics, and they require handing API keys to a third party. Open-source engines (Freqtrade, NautilusTrader, Hummingbot, LEAN) are powerful but built for developers. No product combines rigor, honesty, beginner UX and keeping your own keys. That combination is Ubik's opening.
 - **Differentiators worth investing in:**
   - A strategy lifecycle with promotion gates and kill criteria declared up front.
-  - An "honest backtest report card": out-of-sample results, trial count, Deflated Sharpe Ratio, cost drag and a benchmark.
+  - An honest backtest verdict (shown to the user as the "trust check", doc 07): out-of-sample results, trial count, Deflated Sharpe Ratio, cost drag and a benchmark.
   - Measured backtest-vs-live drift.
   - A plain-language explanation for every decision.
   - Self-hosted keys and full data export.
 - **Build vs reuse: build Ubik's own thin core and reuse permissively licensed libraries.**
   - **Build ourselves:** the domain model, strategy API, event-driven engine, simulated execution and risk layer.
-  - **Reuse:** CCXT (MIT) for exchanges, TradingView Lightweight Charts (Apache-2.0) for charts, and BSD/MIT/Apache analytics libraries.
+  - **Reuse:** CCXT (MIT) for exchanges, TradingView Lightweight Charts (Apache-2.0, attribution required) for charts, and BSD/MIT/Apache analytics libraries.
   - **Avoid:** forking Freqtrade (GPL-3.0, one bot per strategy, fills simulated from candles only) and building on vectorbt (its Commons Clause forbids selling a product built on it).
-  - **Re-evaluate NautilusTrader (LGPL-3.0) as the engine once its v2 API stabilizes.** It has the best architecture of the candidates, but it is mid-rewrite: 2.0.0rc7 was released on 15 Oct 2026. A 2-week spike at the start of P1 should confirm the choice.
+  - **Re-evaluate NautilusTrader (LGPL-3.0) as the engine only on the §4.4 step-5 revisit trigger.** It has the best architecture of the candidates, but it is mid-rewrite: 2.0.0rc7 was released on 15 Oct 2026. Ubik builds its own thin core (doc 10 D-02). A ≤ 2-week NautilusTrader spike at the start of P1 records design ideas to borrow (06 AR-028); it is not an adoption gate.
 
 ---
 
@@ -114,8 +114,8 @@ Each capability is laid out the same way: **what pros do**, what **Ubik can** re
   - Keep an independent risk function that can overrule traders.
   - **Crypto desks also:** cap exposure to each exchange, watch for stablecoin depegs, monitor liquidation and auto-deleveraging (ADL) risk, and staff all of this 24/7.
 - **What Ubik can do:**
-  - **P1:** a risk engine that sits between every strategy and the exchange in every mode, and that strategies cannot bypass. A daily-loss limit, a max-drawdown halt and per-asset caps, all on by default. A kill switch.
-  - **P2:** replays of historical crashes.
+  - **P1:** a risk engine that sits between every strategy and the exchange in every mode, and that strategies cannot bypass. A daily-loss limit, a max-drawdown halt and per-asset caps, all on by default. A kill switch. Replays of historical crash windows for the shipped templates.
+  - **P2:** the full stress library (historical windows and synthetic shocks) for every strategy.
   - **P3:** a per-exchange and per-stablecoin exposure dashboard.
   - Details are in 05.
 - **What Ubik should not do:** lead with VaR as the headline risk number for beginners. Crypto returns are fat-tailed (extreme moves happen far more often than a normal curve predicts), so VaR understates crash risk. Lead with drawdown and "what would have happened in crash X".
@@ -135,7 +135,7 @@ Each capability is laid out the same way: **what pros do**, what **Ubik can** re
   - fee-aware order choice (limit or post-only orders when the trade isn't urgent);
   - throttling over-trading;
   - simple slicing when an order is large relative to the best bid/ask;
-  - full TCA on every paper fill (P1) and live fill (P3), so slippage assumptions are calibrated from real fills.
+  - per-order TCA on every paper fill (P1) and live fill (P3), with an "assumed vs observed cost" view per strategy from P1; aggregate reports and calibrating slippage assumptions from observed fills follow in P2 (05 EX-020).
 
   Details are in 05.
 - **What Ubik should not do:**
@@ -161,12 +161,12 @@ Each capability is laid out the same way: **what pros do**, what **Ubik can** re
   - Use change management, kill switches, runbooks and post-mortems.
   - Keep keys in hardware security modules.
 
-  The classic cautionary tale is Knight Capital in 2012. A botched deployment reactivated dead code and sent more than 4 million orders in 45 minutes, losing roughly $440–460M. Before the market opened, 97 automated error emails had gone unread. It was the SEC's first enforcement action under its market-access rule ([summary](https://www.wilmerhale.com/en/insights/client-alerts/knight-capital-settles-rule-15c3-5-violations-with-sec-agrees-to-pay-12-million)).
+  The classic cautionary tale is Knight Capital in 2012. A botched deployment reactivated dead code and sent more than 4 million orders in 45 minutes, for a loss of about $460M (per the SEC). Before the market opened, 97 automated error emails had gone unread. It was the SEC's first enforcement action under its market-access rule ([summary](https://www.wilmerhale.com/en/insights/client-alerts/knight-capital-settles-rule-15c3-5-violations-with-sec-agrees-to-pay-12-million)).
 - **What Ubik can do:**
-  - **P1:** a watchdog and heartbeats; auto-pause when data goes stale; alerts to the owner's phone; an append-only audit log that allows deterministic replay; versioned deployments.
+  - **P1:** an external heartbeat monitor (an off-host service that alerts the owner when Ubik goes silent); new entries stop automatically when data goes stale (05 §4.4); alerts via at least one external channel the owner chooses (Telegram, email or ntfy); an append-only audit log that allows deterministic replay; versioned deployments.
   - **P3:** reconciliation with the exchange.
-  - Throughout: "fail safe" design. If something breaks, Ubik stops placing new orders rather than carrying on blind. A single server with backups is enough.
-- **What Ubik should not do:** run multi-region high-availability clusters for one user. At this scale, the extra complexity causes more incidents than it prevents. Aim to fail into a paused, flat state rather than to never fail.
+  - Throughout: "fail safe" design. If something breaks, Ubik stops opening new positions rather than carrying on blind, while protective exits keep working. A single server with backups is enough.
+- **What Ubik should not do:** run multi-region high-availability clusters for one user. At this scale, the extra complexity causes more incidents than it prevents. Aim to fail into a paused state (no new entries, protective exits kept) rather than to never fail.
 
 #### C9 — Research governance
 - **What pros do:**
@@ -175,11 +175,11 @@ Each capability is laid out the same way: **what pros do**, what **Ubik can** re
   - Live results are monitored for decay. Alpha fades as other traders discover the same edge.
   - Retired strategies are documented, not deleted.
 - **What Ubik can do: all of it, from P1.** This is the most valuable pro habit for an individual, because the biggest risk is usually the owner's own enthusiasm. In practice:
-  - lifecycle states with promotion gates;
-  - kill criteria registered in advance, with automatic pause when they are breached;
+  - lifecycle stages with promotion gates (05 §9.1): Draft, S0 Backtest and S1 Paper from P1; the live stages S2–S5 from P3;
+  - kill criteria registered in advance; a breach halts the strategy until the owner re-arms it (05 RK-020);
   - decay alerts;
   - a "strategy graveyard" of retired strategies, which also feeds the trial count.
-- **What Ubik should not do:** nothing here needs avoiding. Just keep the gates understandable. A user may override a gate only with an explicit acknowledgment that gets logged.
+- **What Ubik should not do:** nothing here needs avoiding. Just keep the gates understandable. A user may override a gate only where 04 PT-015 allows. The duration, round-trip-count and same-version criteria can never be overridden. Other paper-stage criteria can be overridden only under the Adventurous risk profile, with a logged justification and a 24 h cooling-off.
 
 #### C10 — Treasury and counterparty management (crypto-desk specific)
 - **What pros do:**
@@ -202,7 +202,7 @@ Each capability is laid out the same way: **what pros do**, what **Ubik can** re
 | Source of edge | Pro firms | Individual using Ubik | Verdict |
 |---|---|---|---|
 | Speed / latency | Co-located, microseconds | Home or cloud VM, ~50–300 ms | **Cannot compete.** Avoid any strategy that depends on speed. |
-| Trading costs | Top VIP tiers, near-zero fees or maker rebates | Base tiers, e.g. ~0.1% per side on large exchanges; 0.40% maker / 0.60% taker at Coinbase Advanced's entry tier ([NerdWallet](https://www.nerdwallet.com/investing/reviews/coinbase)) | **Cannot compete.** Trade less often; make cost drag visible. |
+| Trading costs | Top VIP tiers, near-zero fees or maker rebates | Base tiers, e.g. ~0.1% per side on large exchanges, but up to 0.60% maker / 1.20% taker at Coinbase Advanced's entry tier (sources disagree, e.g. [NerdWallet](https://www.nerdwallet.com/investing/reviews/coinbase); Ubik assumes the higher pair until the owner's account confirms it). Fee figures come from 06's venue registry (AR-002). | **Cannot compete.** Trade less often; make cost drag visible. |
 | Information | Paid tick data, alternative data, research teams | Free public data, which is unusually rich in crypto | **Partly.** Data access is decent, but there is no information edge. |
 | Size / capacity | Large positions that move prices | Small positions with negligible impact | **Advantage.** But "small coins with no liquidity" is a trap, not an edge. |
 | Constraints | Mandates, quarterly reporting, career risk | None. Can hold for a long time or sit in cash. | **Advantage.** Patience is a real retail edge. |
@@ -274,10 +274,10 @@ Versions are from PyPI on 2026-10-18.
 |---|---|---|
 | **3Commas API-key leak (Oct–Dec 2022)** | Keys stored by 3Commas were used for unauthorized trades, first on FTX ([The Block](https://www.theblock.co/post/179237/ftx-api-keys-3commas-exploited)). The company first blamed phishing, then confirmed in December 2022 that the leaked data was genuine. Binance told users to disable any key ever entered into 3Commas ([The Block](https://www.theblock.co/post/198295/binance-warns-about-3commas-api-leak-says-users-should-disable-keys), [Cointelegraph](https://cointelegraph.com/news/3commas-ceo-confirms-api-key-leak-following-warning-from-cz)). Reported losses ran from millions to tens of millions of dollars. | Keys never leave the owner's own infrastructure. Use trade-only keys with no withdrawal permission and an IP allowlist. Alert on any trade Ubik didn't place (CAP-028, CAP-036; detail in 08). |
 | **Platform shutdowns and plan changes** | Trality wound down its bot product in 2023 ([HaasOnline blog](https://www.haasonline.com/the-fall-of-more-trading-bot-companies-and-projects/), a competitor's account). Shrimpy discontinued its consumer offering ([Cryptohopper blog](https://cryptohopper.com/de/blog/shrimpy-stops-consumer-offering-introducing-cryptohopper-as-the-perfect-alternative-9465), also a competitor). Cryptohopper's pricing page now lists only a 3-day trial. | Self-host, offer full data export and avoid lock-in (CAP-037). |
-| **Malware disguised as trading bots** | GitHub repositories with inflated stars stole keys and wallets, e.g. a "solana-pumpfun-bot" ([Cointelegraph](https://cointelegraph.com/news/solana-trading-bot-github-malware-scam)). In 2026, a campaign of fake Polymarket trading-bot repositories used typosquatted npm packages (packages named to look like real ones) ([summary of SlowMist/StepSecurity reports](https://threatcluster.io/cluster/malware-spread-via-fake-polymarket-trading-bot-targets-defi--efb72af6)). | Pin and lock dependencies; scan licenses and vulnerabilities; never run untrusted community strategy code outside a sandbox (CAP-044; detail in 08). |
+| **Malware disguised as trading bots** | GitHub repositories with inflated stars stole keys and wallets, e.g. a "solana-pumpfun-bot" ([Cointelegraph](https://cointelegraph.com/news/solana-trading-bot-github-malware-scam)). In 2026, a campaign of fake Polymarket trading-bot repositories used typosquatted npm packages (packages named to look like real ones) ([summary of SlowMist/StepSecurity reports](https://threatcluster.io/cluster/malware-spread-via-fake-polymarket-trading-bot-targets-defi--efb72af6)). | Pin and lock dependencies; scan licenses and vulnerabilities; never run untrusted community strategy code outside a sandbox (CAP-044; sandbox in 08 SEC-035). |
 | **Exchange failures** | FTX collapsed in 2022. Bybit was hacked for about $1.5B in February 2025. | Cap and display exposure per exchange (CAP-018). |
 | **Market-structure stress (10 Oct 2025)** | The largest liquidation cascade on record, with about $19B liquidated ([CoinGecko](https://www.coingecko.com/learn/october-10-crypto-crash-explained)). USDe was mispriced on Binance because Binance valued it from its own order book. Binance later reimbursed about $283M ([RockawayX](https://rockawayx.com/insights/crypto-market-update-october-2025)). | Backtests built on calm data understate tail risk. Stop orders can fill far below their trigger. Stablecoins carry risk. Run stress replays (CAP-010). |
-| **Knight Capital (2012)** | A deployment error caused a $440–460M loss in 45 minutes (§1.2 C8). | Deployment controls, alerts that actually get read, and a kill switch (CAP-017, CAP-029). |
+| **Knight Capital (2012)** | A deployment error sent more than 4 million orders in 45 minutes, for a loss of about $460M (per the SEC; §1.2 C8). | Deployment controls, alerts that actually get read, and a kill switch (CAP-017, CAP-029). |
 | **AI-trading hype** | In the "Alpha Arena" contests (late 2025), LLMs traded crypto perpetuals with real money. Results varied wildly, were sensitive to prompt wording, and several models lost heavily ([Forklog](https://forklog.com/en/ai-model-grok-4-2-triumphs-in-trading-tournament/amp)). | The AI explains and assists but does not trade on its own; AI-drafted strategies pass the same gates as any other (CAP-041). |
 | **Recurring user complaints across retail bot reviews** | Backtests that look great but fail live. DCA and martingale bots (bots that buy more as the price falls) that "work until a long downtrend". Grid bots that lose in trending markets. Leverage one click away. Slow support. | Every template ships with a "when this fails" section and a demonstration (CAP-038). Every number is labeled with where it came from (CAP-039). |
 
@@ -301,7 +301,7 @@ Versions are from PyPI on 2026-10-18.
 
 | Differentiator | Why it's defensible | Who does it today |
 |---|---|---|
-| **Honest backtest report card**: out-of-sample results, walk-forward, trial count, Deflated Sharpe Ratio / PBO, benchmark, fee drag and stress replays in one beginner-readable verdict | Retail tools are paid for exciting numbers, so they lack the incentive. Open-source tools have the pieces but no one assembles them for beginners. | Nobody, end to end. Freqtrade has bias tools; QuantConnect has rigor but isn't aimed at beginners. |
+| **Honest backtest verdict** (the "trust check", 07): out-of-sample results, walk-forward, trial count, Deflated Sharpe Ratio / PBO, benchmark, fee drag and stress replays in one beginner-readable verdict | Retail tools are paid for exciting numbers, so they lack the incentive. Open-source tools have the pieces but no one assembles them for beginners. | Nobody, end to end. Freqtrade has bias tools; QuantConnect has rigor but isn't aimed at beginners. |
 | **Strategy lifecycle with gates and pre-declared kill criteria** ("investment committee in a box") | Turns pro governance into a guided workflow | Nobody at retail level |
 | **Measured backtest-vs-live parity**: re-simulate the paper or live period and explain every difference | Requires an engine designed for it from day one | NautilusTrader's architecture enables it, but it has no UX for it |
 | **Explain-everything traces**: each signal, risk decision and order carries a plain-language reason, and the AI assistant answers from these traces | Requires owning the domain model and event log | Nobody |
@@ -335,11 +335,11 @@ The core must deliver eight things, which serve as the criteria for evaluating t
 | **F. Own thin core plus permissive libraries** | Full control of the domain model and explainability. One event-driven engine for all three modes. License freedom. P1 scope (a few spot pairs, bars and trades) is a few thousand lines. | We own the simulator and order-management correctness, so bugs could create false confidence. Exchange quirks arrive in P3 (CCXT absorbs many of them). | **4/5 (recommended)** |
 
 ### 4.3 License implications
-*This is not legal advice; doc 08 should confirm.*
+*This is not legal advice. Doc 08 holds Ubik's open-source licence policy (CMP-029), which counsel reviews before any distribution.*
 
 | License | Examples | Private self-hosted use | Distributing Ubik as a download | Running Ubik as SaaS |
 |---|---|---|---|---|
-| MIT / BSD / Apache-2.0 | CCXT, Hummingbot, Jesse core, LEAN, skfolio, Lightweight Charts | OK | OK (keep the notices; Apache also grants patent rights) | OK |
+| MIT / BSD / Apache-2.0 | CCXT, Hummingbot, Jesse core, LEAN, skfolio, Lightweight Charts | OK | OK (keep the notices; Apache also grants patent rights). Lightweight Charts also requires attribution: its NOTICE plus a visible link to tradingview.com (06 AR-027). | OK (same attribution) |
 | LGPL-3.0 | NautilusTrader | OK | OK if used as a library. Changes to Nautilus itself must be published under LGPL, and users must be able to swap the library. | OK |
 | GPL-3.0 | Freqtrade, OctoBot, backtrader | OK | The whole combined program must be GPL-3.0 | Technically OK (no distribution happens), but it closes off a later downloadable or closed-source release |
 | AGPL-3.0 | backtesting.py | OK | Must be AGPL | Must offer source code to network users |
@@ -362,7 +362,7 @@ The core must deliver eight things, which serve as the criteria for evaluating t
    - BSD/MIT/Apache libraries for indicators, statistics and portfolio optimization;
    - hftbacktest (MIT) as the P4 reference.
 3. **Use other frameworks as test oracles, not dependencies.** Run reference strategies through Ubik and, privately, through Freqtrade, NautilusTrader and vectorbt, then compare the trades they produce. This differential testing catches simulator bugs. Using code privately for testing doesn't distribute it, so their licenses don't affect Ubik.
-4. **Spike before committing (2 weeks, start of P1).** Implement one reference strategy (an SMA crossover with volatility-targeted sizing on BTC/USDT, 1-minute data aggregated to 1-hour) twice:
+4. **Design spike (≤ 2 weeks, start of P1).** Implement one reference strategy (an SMA crossover with volatility-targeted sizing on BTC/USDT, 1-minute data aggregated to 1-hour) twice:
    - (a) on a minimal Ubik engine prototype;
    - (b) on NautilusTrader v2.
 
@@ -373,7 +373,7 @@ The core must deliver eight things, which serve as the criteria for evaluating t
    - time to add a custom portfolio risk rule;
    - API breakage during the spike.
 
-   If Nautilus wins clearly, adopt it as the engine *behind Ubik's own strategy API* (LGPL permits this).
+   Record the results and the design ideas to borrow in an ADR (06 AR-028). The spike is not an adoption gate: Ubik builds its own core (doc 10 D-02), and NautilusTrader is re-evaluated only on the step-5 trigger.
 5. **Revisit trigger:** re-evaluate NautilusTrader when 2.0 final has shipped and gone three months without breaking changes, or when P4 order-book or market-making work begins.
 
 ---
@@ -384,48 +384,48 @@ The core must deliver eight things, which serve as the criteria for evaluating t
 |---|---|---|---|---|
 | CAP-001 | For every dataset used by a backtest or paper session, Ubik shall record the source, symbol, timeframe, time range, retrieval time and quality-check results (gaps, duplicates, outliers), and shall show any gaps before a backtest runs. | Must | P1 | Data quality is step zero. Storage is covered in 06. |
 | CAP-002 | Re-running a saved backtest with the same strategy version, configuration and dataset snapshot shall produce identical trades and metrics. | Must | P1 | Determinism is the basis for trust and parity checks. |
-| CAP-003 | Universes defined by a rule (e.g. "top 10 by volume") shall include pairs that were delisted or renamed during the period. | Should | P2 | Prevents survivorship bias. P1 uses fixed major pairs. |
-| CAP-004 | A strategy shall carry a plain-language hypothesis (why it should work, and when it should fail) before promotion past Backtested. | Should | P1 | Research starts from a reason, not a curve. |
+| CAP-003 | Universes defined by a rule (e.g. "top 10 by volume") shall include pairs that were delisted or renamed during the period. | Must | P2 | Prevents survivorship bias. P1 uses fixed major pairs. Matches 04 BT-020. |
+| CAP-004 | A strategy shall carry a plain-language hypothesis (why it should work, and when it should fail); Ubik shall prompt for it before promotion past S0. | Should | P1 | Research starts from a reason, not a curve. A prompt, not a blocking gate: the S1 entry checks are listed in CAP-032. |
 | CAP-005 | Ubik shall count and display every backtest and parameter variant ever run on a strategy, including on retired versions (the "trial count"). | Must | P1 | Input to the Deflated Sharpe Ratio; an honesty signal. |
 | CAP-006 | Ubik shall reserve recent history as out-of-sample data by default, report in-sample and out-of-sample results separately, and warn after repeated evaluation of the out-of-sample period. | Must | P1 | Held-out discipline. Defaults are set in 04. |
 | CAP-007 | Ubik shall provide walk-forward validation and report the Deflated Sharpe Ratio and Probability of Backtest Overfitting, each with a plain-language verdict. | Must | P2 | Core differentiator. Algorithms are in 04. |
 | CAP-008 | Every backtest, paper and live report shall show, for the same period and net of costs, the results of buy-and-hold and of holding cash. | Must | P1 | Many "profitable" bots lose to simply holding BTC. |
 | CAP-009 | Ubik shall detect lookahead bias by recomputing signals on truncated data, and shall block promotion when bias is found. | Must | P1 | The most common silent backtest bug. |
-| CAP-010 | Candidate strategies shall be replayed through stress scenarios (at least Mar 2020, May 2021, Nov 2022, 10 Oct 2025), with drawdown and recovery reported for each. | Should | P2 | Counters judging strategies on calm periods. |
-| CAP-011 | Ubik shall report Monte-Carlo or bootstrap ranges (5th–95th percentile) for return and max drawdown. | Should | P2 | Communicates uncertainty honestly. |
+| CAP-010 | Candidate strategies shall be replayed through historical stress windows (at least Mar 2020, May 2021, Nov 2022, 10 Oct 2025), with drawdown and recovery reported for each. From P2, the full stress library (including synthetic shocks) shall apply to every strategy. | Must | P1 (historical windows for shipped templates); P2 (full stress library) | Counters judging strategies on calm periods. Historical windows for user strategies are Should P1 (04 BT-027). |
+| CAP-011 | Ubik shall report Monte-Carlo or bootstrap ranges (5th–95th percentile) for return and max drawdown. | Must | P2 | Communicates uncertainty honestly. Matches 04 BT-026. |
 | CAP-012 | Strategies shall be able to combine signals (AND/OR in P1, weighted or voted from P2), and Ubik shall report each signal's standalone and marginal contribution. | Should | P2 | Signal combination at retail scale. |
 | CAP-013 | Signal generation shall be separate from position sizing, so one strategy version can run under different sizing policies (fixed, % of equity, volatility-targeted) without code changes. | Must | P1 | Enables risk-based defaults (05). |
-| CAP-014 | Ubik shall allocate capital across concurrent strategies by a selectable policy (equal capital, or equal risk) with per-strategy caps, and shall show the correlation between strategies. | Should | P2 | Multi-strategy portfolios. |
+| CAP-014 | Ubik shall allocate capital across concurrent strategies by a selectable policy (equal capital, or equal risk) with per-strategy caps, and shall show the correlation between strategies. | Should | P2 | Multi-strategy portfolios. In P1, several bots may already share a paper account, each in its own sleeve with manual or equal-weight allocation (05 PF-001, PF-004). |
 | CAP-015 | In every mode, every order shall pass a risk engine that strategies cannot bypass. It shall enforce at least: max order value, max position per asset, max total exposure, a price-band check and a max order rate. Rejections shall be logged with the reason. | Must | P1 | Pro pre-trade controls. Limits are set in 05. |
-| CAP-016 | Account-level daily-loss and max-drawdown limits shall be on by default, and shall pause all strategies and cancel open orders when breached. | Must | P1 | Safety by default. |
-| CAP-017 | A kill switch, reachable within two clicks or taps from any screen, shall halt all strategies and cancel open orders, with optional flattening of positions in live mode. | Must | P1 | Exercised in paper mode before P3. |
+| CAP-016 | Account-level daily and weekly loss limits and drawdown limits shall be on by default. A daily or weekly loss breach, or a 15% account drawdown, shall set the account to REDUCE_ONLY and cancel resting entry orders while protective exits keep working; a 20% account drawdown shall set it to HALTED until the owner reviews it. | Must | P1 | Safety by default. Values and states per 05 §2.1, RK-019 and RK-020. |
+| CAP-017 | Ubik shall provide a three-level kill switch, reachable from any screen: L1 Pause ("Pause all") within one click or tap with no confirmation; L2 Cancel (L1 plus cancelling all open orders, verified, within 10 s) within two clicks or taps with no confirmation; L3 Flatten (L2 plus closing all positions) within two clicks or taps plus an explicit confirmation. All three levels shall work in paper from P1. | Must | P1 | Exercised in paper mode before P3. Levels and timings are owned by 05 §4.3 (RK-023, RK-024). |
 | CAP-018 | Ubik shall show capital per exchange and per stablecoin, and warn above user-set caps. | Should | P3 | Counterparty lessons from FTX, the Bybit hack and the USDe depeg. |
-| CAP-019 | Simulated execution shall apply the exchange's real fee schedule for the user's tier and conservative spread and slippage models. Any zero-cost mode shall be labeled "unrealistic". | Must | P1 | Fees and spread dominate retail costs (04, 05). |
-| CAP-020 | For every order, Ubik shall record the decision price, submission time and price, fills, fees and latency, and shall compute implementation shortfall and an aggregate TCA report. | Must | P1 | Paper in P1, live in P3. |
+| CAP-019 | Simulated execution shall apply the exchange's real fee schedule for the user's tier and conservative spread and slippage models. Any zero-cost mode shall be labeled "unrealistic". | Must | P1 | Fees and spread dominate retail costs (04, 05). Fee schedules come from 06's venue registry (AR-002). |
+| CAP-020 | For every order, Ubik shall record the decision price, submission time and price, fills, fees and latency, and shall compute implementation shortfall per order and show a per-strategy "assumed vs observed cost" view (P1). An aggregate TCA report and cost calibration shall follow in P2. | Must | P1 (aggregation P2) | Paper in P1, live in P3. Per-order TCA is 05 EX-019; aggregation and calibration are 05 EX-020. |
 | CAP-021 | Ubik shall alert when realized slippage exceeds the modeled slippage by more than a threshold, and shall offer to recalibrate the model. | Should | P2 | Closes the TCA feedback loop. |
 | CAP-022 | Ubik shall show each strategy's annualized fee drag, and warn when the average gross edge per trade is below the estimated round-trip cost. | Must | P1 | The key honesty number (§1.3). |
-| CAP-023 | Execution style shall be selectable per strategy: at least market, limit, post-only with timeout-then-cross, and TWAP. | Should | P3 | Order mechanics are in 05. |
-| CAP-024 | Ubik shall split each strategy's P&L into market beta, strategy contribution, fees and slippage, per strategy and per asset. | Should | P2 | Attribution at retail scale. |
-| CAP-025 | For any paper or live strategy, Ubik shall re-simulate the same period on the recorded data and show trade-by-trade differences with their causes (fills, latency, data, fees). | Must | P1 | Measures parity instead of assuming it. |
-| CAP-026 | Ubik shall monitor data freshness, heartbeat, exchange connectivity and clock drift. On a breach, it shall pause the affected strategies and alert in-app and via at least one push channel. | Must | P1 | Fail safe. Notification channels are covered in 06 and 07. |
+| CAP-023 | Execution style shall be selectable per strategy: market, limit and post-only (P1); post-only with timeout-then-cross, i.e. limit-chase (P2, 05 EX-016); TWAP and iceberg (P2, Could, 05 EX-017). | Should | P1 / P2 | Order mechanics are in 05. VWAP, POV and smart order routing are P4. |
+| CAP-024 | Ubik shall split each strategy's P&L into market beta, strategy contribution, fees and slippage, per strategy and per asset. | Should | P2 | Attribution at retail scale. Account-level performance for any period is 05 PF-015 (P1). |
+| CAP-025 | For any paper or live strategy, Ubik shall re-simulate the same period on the recorded data and show trade-by-trade differences with their causes (fills, latency, data, fees). | Must | P1 | Measures parity instead of assuming it. Delivered by 04's daily parity replay (PT-011); thresholds in 04 §8.5. |
+| CAP-026 | Ubik shall monitor data freshness, heartbeat, exchange connectivity and clock drift. On a breach, it shall stop new entries on the affected symbols or venue and alert the owner in-app and via at least one owner-chosen external channel (Telegram, email or ntfy). | Must | P1 | Fail safe. Stale-data rules and alert timing are in 05 §4.4 (a venue stale for more than 30 s goes REDUCE_ONLY); notification channels are covered in 06 and 07 (UX-037, UX-054). |
 | CAP-027 | Ubik shall keep an append-only audit log of data checkpoints, signals, risk decisions, orders, fills, configuration changes and user actions, sufficient to replay any day deterministically. | Must | P1 | Basis for explanations, incident review and tax (08). |
 | CAP-028 | In live mode, Ubik shall reconcile orders, positions and balances with the exchange at startup and periodically. It shall halt on unexplained mismatches and alert on any order it did not originate. | Must | P3 | Would quickly surface 3Commas-style key abuse. |
-| CAP-029 | Any code or parameter change to a live strategy shall create a new version that must pass through Paper, or a logged explicit override, before it trades real money. | Must | P3 | The Knight Capital lesson. |
+| CAP-029 | Any code or parameter change to a live strategy shall create a new version that re-enters at S1 Paper and must pass the stage gates again (05 §9.1) before it trades real money. | Must | P3 | The Knight Capital lesson. The same-version, duration and round-trip-count criteria can never be overridden (04 PT-015). |
 | CAP-030 | Ubik shall support incident records linked to strategies and log entries, and shall prompt for one after any automatic live halt. | Could | P3 | A lightweight post-mortem habit. |
 | CAP-031 | Every strategy shall be versioned (code, parameters, sizing, risk configuration), and every result shall be tied to exactly one version. | Must | P1 | Prerequisite for governance. |
-| CAP-032 | Ubik shall implement the lifecycle Idea → Backtested → Validated → Paper → Live-Pilot → Live → Retired with configurable, objective promotion gates and safe defaults. Live states unlock in P3. | Must | P1 | "Investment committee in a box". Gate defaults are set in 04 and 05. |
-| CAP-033 | Each strategy shall declare kill criteria before entering Paper (default: drawdown above 1.5× its worst out-of-sample drawdown). A breach shall auto-pause the strategy until it is explicitly reviewed. | Must | P1 | Pre-commitment beats rationalizing in the moment. |
+| CAP-032 | Ubik shall track each Bot (one strategy version on one account) through the lifecycle Draft → S0 Backtest → S1 Paper → S2 Exchange demo → S3 Shadow → S4 Pilot → S5 Scaled, with the terminal state Retired, using configurable, objective promotion gates with safe defaults (05 §9.1; S1 detail in 04 §8.5). S2–S5 unlock in P3. | Must | P1 | "Investment committee in a box". P1 tracks Draft/S0/S1 and enforces the S1 entry checks: the blocking 04 ST-018 checks, including the truncation look-ahead test (CAP-009, ST-019); declared kill criteria (CAP-033); and, below 100 backtest round trips, the 05 RK-039 consequence preview plus typed confirmation. S1 exit and S2–S5 gates are enforced from P3 (04 PT-015). Retired versions still count in the trial ledger. Trading states (ACTIVE/REDUCE_ONLY/HALTED) are separate from the stage. |
+| CAP-033 | Each strategy shall declare kill criteria before entering S1 Paper. The default is the strategy drawdown breaker in 05 RK-020 (the smaller of 20% and 1.5 × the reference drawdown, i.e. the worst drawdown of the version's full backtest, net of costs); the owner may declare stricter criteria. A breach shall set the strategy to HALTED until the owner re-arms it with a note. | Must | P1 | Pre-commitment beats rationalizing in the moment. |
 | CAP-034 | Ubik shall compare live and paper returns with backtest expectations and flag statistically significant decay. | Should | P2 | Model-decay monitoring. |
 | CAP-035 | Real-money capital for a newly promoted strategy shall start at a small pilot amount and increase only through explicit, logged steps after the pilot criteria are met. | Must | P3 | Staged ramp-up (05). |
 | CAP-036 | Ubik shall never request, store or use API keys with withdrawal or transfer permission, and shall store trade keys only on the owner's infrastructure, encrypted at rest. | Must | P3 | The 3Commas lesson (08). |
-| CAP-037 | Ubik shall export all user data (strategies, versions, results, orders, fills, logs) in open formats (CSV, JSON, Parquet). | Must | P1 | The platform-shutdown lesson; tax (08). |
+| CAP-037 | Ubik shall export all user data (strategies, versions, backtest runs and results, orders, fills, journal, audit log and configuration) in open formats (CSV, JSON, Parquet). Paper exports shall carry the paper watermark (08 CMP-012). | Must | P1 | The platform-shutdown lesson; tax (08). This is the export requirement; 06 DA-022 implements it. |
 | CAP-038 | Template strategies (DCA, grid, trend, mean-reversion, breakout) shall each include a plain-language "when this fails" section and a stress scenario that demonstrates it. | Must | P1 | Competitors hide these failure modes (04). |
 | CAP-039 | Every performance figure shall be labeled with its provenance (in-sample, out-of-sample, walk-forward, paper, live) and cost basis. In-sample-only results shall never appear unlabeled. | Must | P1 | Makes the honesty principle testable. |
-| CAP-040 | Ubik shall accept authenticated webhook signals (e.g. TradingView alerts), which shall still pass through the risk engine and lifecycle gates. | Could | P2 | Common competitor feature. |
+| CAP-040 | Ubik shall accept authenticated webhook signals (e.g. TradingView alerts), which shall still pass through the risk engine and lifecycle gates. | Could | P2 | Common competitor feature. Needs the separate, off-by-default webhook ingress in 08 SEC-041. |
 | CAP-041 | Strategies or parameter changes drafted by the AI assistant shall be new versions subject to the same gates. The assistant shall not place, modify or cancel orders without explicit user confirmation. | Must | P2 | LLM traders have proven erratic (07). |
 | CAP-042 | Ubik shall flag strategies that need sub-second reaction (e.g. holding periods under 1 minute) and explain why retail infrastructure can't compete there. | Should | P1 | Encodes the §1.4 non-goals. |
 | CAP-043 | Market making and cross-exchange arbitrage shall be offered only as simulations that model fee tier, latency, queue position and transfer delay, with no live use without a separate review. | Could | P4 | Teaches why these strategies are pro-only. |
-| CAP-044 | Shipped code shall use only permissive (MIT, BSD, Apache-2.0) or LGPL-as-library dependencies, enforced by an automated license and vulnerability check, unless the owner explicitly accepts an exception. | Must | P1 | Keeps the P4 commercial path open and reduces supply-chain risk. |
+| CAP-044 | Ubik's own linked and shipped code shall use only permissive (MIT, BSD, Apache-2.0) or LGPL-as-library dependencies, enforced by an automated license and vulnerability check, unless the owner explicitly accepts an exception. GPL/AGPL software may run only as a separate, unmodified service (06 NFR-020). | Must | P1 | Keeps the P4 commercial path open and reduces supply-chain risk. Licence policy in 08 CMP-029. |
 
 ---
 
@@ -433,7 +433,7 @@ The core must deliver eight things, which serve as the criteria for evaluating t
 
 1. **Will Ubik ever be distributed or sold** (open-source release, paid download, SaaS)? This decides how strict the license policy needs to be (CAP-044). If the answer is "never, personal only", GPL tools like Freqtrade become acceptable to embed.
 2. **Which exchanges do you actually use, and where are you resident?** Jurisdiction decides which venues are available (for example, US residents can't use Binance.com or Bybit) and which fee schedules apply. That in turn drives the fee-drag math in §1.3.
-3. **Will you write Python strategies yourself, or only use the no-code builder?** This affects how much weight the code-first strategy API gets compared with the builder.
+3. **Will you write Python strategies yourself, or only use the no-code builder?** *Answered by doc 10 D-07: templates and the no-code builder in P1; the Python SDK in P2, running only in the SEC-035 sandbox.* Your answer now only affects how much weight the P2 code-first API gets compared with the builder.
 4. **What holding period and capital do you have in mind for P3** (minutes, hours or days; hundreds or tens of thousands of dollars)? This decides whether execution optimization beyond "minimize fees" matters at all.
 5. **Would you accept an interim tool?** For example, running Freqtrade in dry-run to learn while Ubik is built. This is fine for personal use regardless of its GPL license.
 6. **How much autonomy do you want the AI assistant to have?** The recommendation here is "propose and explain, never act without confirmation".
@@ -445,7 +445,7 @@ The core must deliver eight things, which serve as the criteria for evaluating t
 |---|---|---|
 | **Scope creep from "everything trading firms do"** | Ubik never ships | Phase-tagged capability map; explicit non-goals (§1.4); copy pro *process* first |
 | **Bugs in our own simulator create false confidence** | Bad strategies get promoted | Differential testing against Freqtrade, Nautilus and vectorbt; golden-file tests; mandatory parity reports (CAP-025) |
-| **Wrong engine choice** (own core vs NautilusTrader) | Rework in P3 or P4 | 2-week spike; clean adapter boundaries; defined revisit trigger (§4.4) |
+| **Wrong engine choice** (own core vs NautilusTrader) | Rework in P3 or P4 | ≤ 2-week design spike (06 AR-028); clean adapter boundaries; defined revisit trigger (§4.4 step 5) |
 | **"Pro-grade tools" read as "pro-grade returns"** | Users over-trust Ubik and size up | Honest labeling (CAP-039), benchmark (CAP-008), fee drag (CAP-022), education (07) |
 | **Free exchange-native bots out-compete Ubik on convenience** | Low perceived value | Compete on honesty, learning and control, not convenience; integrate rather than replicate where sensible |
 | **A copyleft or Commons-Clause dependency slips in** | Blocks a later commercial path | Automated license gate in CI (CAP-044) |

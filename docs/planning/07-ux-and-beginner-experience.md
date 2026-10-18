@@ -5,9 +5,9 @@
 ## Summary
 
 - **"Beginner friendly" should mean that understanding is easy and risky actions are slow, not that trading is easy.** Every number gets a plain-language explanation. Realistic expectations are shown up front. Friction scales with risk: making things safer takes one click, while making them riskier needs a confirmation, plus a waiting period once real money is involved.
-- **One app, two depths.** *Guided* and *Pro* modes share the same screens and engine. Pro mode reveals more controls and metrics, but no mode hides risk information. The user levels up by learning and over time, never by trade count or profit.
+- **One app, two depths.** *Guided* and *Pro* modes share the same screens and engine. Pro mode reveals more controls and metrics, but no mode hides risk information or changes risk limits; limits come from the risk profile, which starts on Careful for everyone (doc 05 §2.1). The user levels up by learning and over time, never by trade count or profit.
 - **Every backtest leads with a plain-language story and a "How much should I trust this?" check.** The story reads like: *"If you had started with $1,000… at its worst you'd have been down $310… simply holding BTC would have done better."* The trust check lists why the result may mislead: too few trades, too many variations tried, or no test on unseen data.
-- **No gamification of trading.** No confetti, streaks, points, return leaderboards, "top movers" on Home, or default price-move push notifications. Regulator experiments and academic studies show these increase trading frequency and risk-taking, especially among less financially literate and younger users ([FCA 2024](https://www.fca.org.uk/publications/research-notes/research-note-digital-engagement-practices-trading-apps-experiment); [Arnold et al. 2022](https://ris.uni-paderborn.de/record/21571)).
+- **No gamification of trading.** No confetti, streaks, points, return leaderboards, "top movers" on Home, or default price-move notifications. Regulator experiments and academic studies show these increase trading frequency and risk-taking, especially among less financially literate and younger users ([FCA 2024](https://www.fca.org.uk/publications/research-notes/research-note-digital-engagement-practices-trading-apps-experiment); [Arnold et al. 2022](https://ris.uni-paderborn.de/record/21571)).
 - **The Claude-powered assistant (P2) explains and drafts. It never decides.** Its answers are grounded in Ubik's own data and cite their sources. It can draft strategies for the user to review. It cannot place trades, deploy strategies or loosen limits, and it does not give personalized buy/sell/allocation advice, which Anthropic's usage policy classes as a high-risk use.
 - **Paper and live must be impossible to confuse.** Ubik uses a persistent text label, a distinct visual treatment and unit prefix, and never combines paper and live totals. Going live (P3) follows doc 05's staged path, shown as a graduation scorecard, and ends with an arming flow: knowledge check, small capital cap, 24-hour cooling-off and re-authentication.
 
@@ -21,7 +21,7 @@ The owner may start as Persona A and grow into C, and the modes and unlocks in �
 - *Goals:* understand how trading works and try ideas without risking money.
 - *Fears:* jargon, looking stupid, scams, losing money they can't afford, breaking something.
 - *Beginner friendly means:* a guided path to a first backtest in under 10 minutes, plain words, safe defaults, nothing irreversible, and being told clearly when something is a bad idea.
-- *Default:* Guided mode, a small realistic paper balance and conservative limits.
+- *Default:* Guided mode, a small realistic paper balance and the Careful risk profile (doc 05 §2.1).
 
 **B. "Sam", intermediate hobbyist.** Sam uses TradingView, knows candles, moving averages and RSI, and has traded spot manually with mixed results.
 - *Goals:* turn chart ideas into rules, test them properly and paper trade several at once.
@@ -38,7 +38,7 @@ The owner may start as Persona A and grow into C, and the modes and unlocks in �
 | Persona | Primary screens | Success signal (not P&L) |
 |---|---|---|
 | Alex | Home, Learn, Strategy library, Backtest report | Can explain why their first backtest might not repeat |
-| Sam | Builder, Backtest lab, Journal, Paper portfolio | Rejects an overfit idea using the trust check before paper trading it |
+| Sam | Builder, Backtest lab, Journal, Paper account | Rejects an overfit idea using the trust check before paper trading it |
 | Quinn | Backtest lab (Pro), Code view, Risk center, Exports | Paper results fall inside the backtest's expected range; disciplined graduation to live |
 
 ---
@@ -51,7 +51,7 @@ The owner may start as Persona A and grow into C, and the modes and unlocks in �
 flowchart LR
   A[Open Ubik] --> B["Welcome: what Ubik is and is not"]
   B --> C["Experience and risk questionnaire"]
-  C --> D["Profile summary: mode, paper balance, default limits"]
+  C --> D["Profile summary: mode, paper balance, Careful risk profile"]
   D --> E["Learn basics: 3 short lessons"]
   E --> F["Explore a market: guided BTC chart tour"]
   F --> G[Pick a template strategy]
@@ -83,10 +83,10 @@ Users can skip every step except acknowledging how paper and live differ.
 | # | Question (short) | What it sets |
 |---|---|---|
 | 1 | Have you traded or invested before? (never / a few times / regularly / professionally) | Suggested mode and learning path |
-| 2 | Three quick checks: "A coin falls 50%; what rise gets you back?" (100%) · "What does a stop-loss do?" · "A 0.1% fee each way costs what on a $1,000 round trip?" (~$2) | Mode suggestion and recommended lessons. Self-reported experience is unreliable, so Ubik tests lightly. |
+| 2 | Three quick checks: "A coin falls 50%; what rise gets you back?" (100%) · "What does a stop-loss do?" · "A 0.1% fee each way costs what on a $1,000 round trip?" (~$2) | Mode suggestion and recommended lessons. Self-reported experience is unreliable, so Ubik tests lightly. The same checks are reused when moving to a looser risk profile (UX-053). |
 | 3 | What do you want from Ubik? (learn / test ideas / automate / eventually real money) | Home layout, next-step cards |
 | 4 | How much might you realistically use with real money later? | Default paper balance. A warning appears if the user sets more than 10× this. |
-| 5 | How much of that could you lose without affecting your life? | Default drawdown limit and alert levels |
+| 5 | How much of that could you lose without affecting your life? | An optional tighter strategy drawdown limit (it can only lower doc 05's 20% cap, RK-020, never raise it) and alert levels |
 | 6 | Your account drops 30% in a month. What do you do? | Alert thresholds, emphasis on risk lessons |
 | 7 | How often will you check in? | Suggested timeframes (no 1-minute strategies for weekly checkers), notification defaults |
 | 8 | Display: currency, time zone, color scheme, theme, text size | Settings |
@@ -99,19 +99,19 @@ Design notes:
 ### 2.3 From template to review
 
 - **Learn basics:** three lessons of ≤ 5 minutes each ("What is a candle?", "Fees and slippage", "Why most traders lose"), each ending in a "Try it" link.
-- **Explore a market:** a guided BTC/USDT chart tour with a plain summary, e.g. "BTC is up 4.2% this week; volatility is high compared with the last 90 days".
+- **Explore a market:** a guided BTC/USDT chart tour with a plain summary, e.g. "BTC is up 4.2% this week; volatility is Stormy (in the top third of the past year)". Volatility states come from doc 03 (MA-001).
 - **Pick a template:** see UX-022.
-- **Backtest:** defaults to the last 3–4 years, realistic costs (doc 04) and a benchmark. The report is wireframed in §3.3.
-- **Paper trade:** deploy via a review screen (UX-006).
+- **Backtest:** defaults to the most recent 4 years of the development set, ending where the out-of-sample vault begins (or the whole development set if it is shorter), with realistic costs (doc 04) and a benchmark. The vault result is shown in a separate panel; opening the vault is counted and allowed once per strategy version (doc 04 BT-022). The report is wireframed in §3.3.
+- **Paper trade:** deploy via a review screen (UX-006). Entering paper (stage S1) needs the blocking strategy checks to pass and kill criteria to be declared; if the backtest has fewer than 100 round trips, the owner also sees a consequence preview and types a confirmation (doc 05 §9.1, RK-039).
 - **Monitor and review:** the Journal explains every action (UX-016), and the weekly review (UX-012) compares paper results with the backtest's expected range.
 
 ### 2.4 Graduating to live (P3)
 
-The UX wraps the staged path owned by doc 05 §9.1: S0 backtest → S1 paper → S2 exchange demo → S3 read-only shadow → S4 tiny-capital pilot → S5 scaled. Doc 04 §8.5 sets the S1 criteria. Doc 08 sets the arming and cooling-off rules (CMP-022, SEC-018). This doc defines how the path is shown and how the user moves along it.
+The UX wraps the staged path owned by doc 05 §9.1: Draft → S0 Backtest → S1 Paper → S2 Exchange demo → S3 Shadow (read-only) → S4 Pilot (tiny capital) → S5 Scaled. A withdrawn version ends in Retired. The stage is tracked per bot (one strategy version on one account) and is separate from the trading state. P1 tracks Draft, S0 and S1; S2–S5 unlock in P3. Doc 04 §8.5 sets the S1 criteria. Doc 08 sets the arming and cooling-off rules (CMP-022, SEC-018). This doc defines how the path is shown and how the user moves along it.
 
 ```mermaid
 flowchart TD
-  S["User: take strategy X live"] --> SC{"Graduation scorecard: S1 paper criteria met? (30 days, 20 trades, same version, within expectation band)"}
+  S["User: take strategy X live"] --> SC{"Graduation scorecard: S1 paper criteria met? (30 days, 20 round trips or 8 cycles for DCA/rebalancing, same version, within expectation band)"}
   SC -->|no| W1["Show what is missing, keep paper running"]
   SC -->|yes| D["S2 exchange demo, then S3 read-only shadow"]
   D -->|problems| W2["Explain drift, investigate first"]
@@ -123,19 +123,19 @@ flowchart TD
   P -->|demotion trigger| B["Automatic demotion, incident card explains why"]
 ```
 
-Promotion always needs the owner's explicit approval, and demotion is automatic (doc 05). Whether the owner can override any gate is an open question.
+Promotion always needs the owner's explicit approval, and demotion is automatic (doc 05). Gate overrides follow doc 04 PT-015: the duration, round-trip (or cycle) count and same-version criteria can never be overridden, and a new version always re-enters at S1. Other S1 criteria can be overridden only under the Adventurous risk profile, with a logged justification and a 24 h cooling-off. The owner's choice is tracked in doc 10 Q-15.
 
 ### 2.5 "Something went wrong" journeys
 
-Every incident produces an **incident card** with five parts: what happened, what Ubik already did, the state of positions, what the user can do, and an "Explain this" link.
+Every incident produces an **incident card** with five parts: what happened, what Ubik already did, the state of positions, what the user can do, and an "Explain this" link. Status words map to doc 05's three trading states (RK-004): **Running** = ACTIVE, **Paused** = REDUCE_ONLY, **Halted** = HALTED. "Stale" describes data health; it is not a trading state.
 
 | Situation | What the user sees | Automatic action (doc 05/06) | Next actions |
 |---|---|---|---|
-| **Drawdown limit hit** | "Trend-BTC is down 15.2% ($152) from its best point; your limit is 15%. It has been paused." | Stop new entries; apply the configured exit policy | Compare with the backtest's worst drop ("the backtest's worst was −31%, so this is within history"). Then resume (with confirmation), edit or retire the strategy. |
-| **Risk engine blocked/resized an order** | "Ubik did not buy 0.05 BTC: it would put 42% of your account in one coin (limit 25%). It bought 0.03 BTC instead." | Block or resize the order, and log the rule and values | "Why this rule exists" link. Changing the limit follows the loosening friction in §7.3. |
-| **Exchange/data outage** | The amber status bar shows "Market data is 4 min old"; the chart gap is hatched | No new entries while data is stale. Stops follow doc 05 policy. | Wait, or switch source. A post-incident summary lists anything skipped. |
+| **Drawdown limit hit** | "Trend-BTC is down 20.3% ($203) from its best point; its limit is 20%. It has been halted until you re-arm it." | The strategy is HALTED: no new orders, only cancels; the position is kept (doc 05 RK-020) | Compare with the backtest's worst drop ("the backtest's worst was −31%, so this is within history"). Then re-arm it with a short note, edit or retire the strategy. |
+| **Risk engine blocked/resized an order** | "Ubik did not buy 2 SOL: it would put 42% of your account in one coin (limit 25%). It bought 1.1 SOL instead." | Block or resize the order, and log the rule and values | "Why this rule exists" link. Changing the limit follows the loosening friction in §7.3. |
+| **Exchange/data outage** | The amber status bar shows "Market data is 4 min old"; the chart gap is hatched. After 2 min of staleness while bots run or positions are open, an external alert goes out (Warning in paper). | Per doc 05 §4.4: new entries denied; cancels always pass; exits only as protected orders priced from fresh data. A venue stale for > 30 s goes REDUCE_ONLY. | Wait, or switch source. A post-incident summary lists anything skipped. |
 | **Strategy error** | "Strategy X stopped after an error at 14:02 UTC." Technical detail is collapsed. | Stop only that strategy | Read the plain-words error, ask the assistant, edit and restart |
-| **Engine offline** | A watchdog sends an external alert: "Engine hasn't reported for 5 min" | n/a (watchdog runs separately) | Restart guide. In P3, a reminder that live orders remain on the exchange. |
+| **Engine offline** | The external heartbeat monitor sends an external alert: "Engine hasn't reported for 2 min" | n/a (the monitor runs off-host, doc 06 AR-032) | Restart guide. In P3, a note on what remains on the exchange: the dead-man's switch cancels resting entry orders (doc 05 RK-025), while positions and protective stops stay. |
 | **P3 reconciliation mismatch** | Critical: "Exchange shows 0.031 BTC; Ubik expected 0.030." | Halt live trading on that account | Guided reconciliation |
 
 ### 2.6 Journey requirements
@@ -145,14 +145,14 @@ Every incident produces an **incident card** with five parts: what happened, wha
 | UX-001 | Ubik shall provide first-run onboarding completable in ≤ 5 minutes. All steps except the paper/live explanation and its acknowledgement shall be skippable. Onboarding shall include a "Ubik will never ask for…" notice: seed phrases, exchange passwords, withdrawal-enabled keys, or contact via DM. | Must | P1 | Guarantee the critical concept; anti-phishing (doc 08 T7) |
 | UX-002 | Ubik shall ask ≤ 10 onboarding questions (experience, 3 knowledge checks, goals, realistic amount, capacity for loss, loss reaction, check-in frequency, display). It shall then show a profile summary listing every default set, each editable. | Must | P1 | Transparent mapping |
 | UX-003 | Questionnaire outputs shall be labelled "starting defaults" and never described as advice, suitability or recommendation. | Must | P1 | Regulatory language (doc 08) |
-| UX-004 | A user with no indicator knowledge shall be able to go from template to a completed backtest with a plain-language report in ≤ 10 minutes on first use. | Must | P1 | Usability test target |
+| UX-004 | A user with no indicator knowledge shall be able to go from first launch, including onboarding, to a completed template backtest with a plain-language report in ≤ 10 minutes. | Must | P1 | Usability test target; matches doc 00 G1. Relies on the quick-start dataset that starts downloading at first launch (doc 06 DA-023). |
 | UX-005 | The default paper balance shall be the user's stated realistic amount (fallback $1,000). Setting more than 10× that amount shall show why it distorts learning. | Must | P1 | Realistic sizing and fees |
-| UX-006 | Before deployment, Ubik shall show a review screen covering rules in plain language, pair, timeframe, risk limits, cost model and trust-check result. | Must | P1 | Informed deployment |
+| UX-006 | Before deployment, Ubik shall show a review screen covering rules in plain language, pair, timeframe, the risk profile and its limits, the declared kill criteria (default: the doc 05 RK-020 drawdown breaker), cost model and trust-check result. If the backtest has fewer than 100 round trips, the screen shall show the doc 05 RK-039 consequence preview and require a typed confirmation before paper trading starts. | Must | P1 | Informed deployment; S1 entry rules in doc 05 §9.1 (blocking doc 04 ST-018 checks must also pass) |
 | UX-007 | Every incident (risk block, limit breach, outage, strategy error, engine offline, reconciliation mismatch) shall produce an incident card with the five parts listed in §2.5. | Must | P1 | Mismatch is P3 |
 | UX-008 | When the risk engine blocks or resizes an order, Ubik shall show the rule, computed values and limit in plain language, with a link to the limit. | Must | P1 | Needs rule metadata from doc 05 |
-| UX-009 | Ubik shall show data freshness globally and on charts, mark gaps visually, and state what strategies do while data is stale. | Must | P1 | Doc 06 |
-| UX-010 | Ubik shall show each strategy's staged path to live (doc 05 S0–S5) as a graduation scorecard listing every criterion with its current value and pass/fail. It shall not arm live trading until S1–S3 pass and the arming flow in §2.4 completes. Promotion shall need explicit owner approval; each demotion shall produce an incident card. | Must | P3 | Criteria from doc 04 §8.5 and doc 05; arming from doc 08 CMP-022 |
-| UX-011 | Ubik shall provide an "expected vs actual" view comparing paper (later live) results with the backtest's expected range. | Should | P2 | Early detection of drift between simulation and live; feeds a P3 gate |
+| UX-009 | Ubik shall show data freshness globally and on charts, mark gaps visually, and state what strategies do while data is stale. | Must | P1 | Doc 06; stale-data rules in doc 05 §4.4 |
+| UX-010 | Ubik shall show each bot's staged path to live (doc 05 §9.1: Draft, S0–S5) as a graduation scorecard listing every criterion with its current value and pass/fail. It shall not arm live trading until S1–S3 pass and the arming flow in §2.4 completes. Promotion shall need explicit owner approval; each demotion shall produce an incident card. | Must | P3 | Criteria from doc 04 §8.5 and doc 05; arming from doc 08 CMP-022. In P1, Draft/S0/S1 progress is shown per doc 04 PT-014. |
+| UX-011 | Ubik shall show each paper bot's parity report from doc 04 PT-011: signal match rate, fill difference and P&L tracking error against the daily parity replay (Must, P1). It shall also provide an "expected vs actual" view comparing paper (later live) results with the backtest's expected range (Should, P2). | Must (parity report); Should (expected vs actual) | P1 (parity report); P2 (expected vs actual) | The parity report is the G3 measure (doc 04 §8.5: signal match ≥ 95%, mean fill difference ≤ 1.5 × modeled slippage). The expected-vs-actual view detects drift early and feeds a P3 gate. |
 | UX-012 | Ubik shall offer a weekly review of activity, rule adherence and journal prompts. The review shall never suggest increasing trading. | Should | P2 | Reflection over activity |
 
 ---
@@ -179,13 +179,13 @@ Mobile:      bottom tabs Home · Portfolio · Journal · Learn · More;  Pause a
 | **Scanner** | Find markets matching conditions (doc 03) | Preset scans with explanations | Custom scans and scan alerts | P2 |
 | **Strategy library** | Templates: idea, works/fails when, frequency, complexity | 2–3 recommended | Full list | P1 |
 | **Strategy builder** | Rules without code, plain-language readback, validation, signal preview | Edit template parameters within safe ranges | Full rule editor; code view (P2) | P1 |
-| **Backtest lab/report** | Test on history, judge honestly | Summary, trust check, 6–8 core metrics | All metrics, heatmaps, walk-forward, Monte Carlo, sweeps (P2) | P1 |
-| **Portfolio** | Holdings, orders, realized and unrealized P&L, fees, allocation, benchmark | Plain labels ("profit if sold now") | Exposure, correlation, TCA (P2–P3) | P1 |
-| **Risk center** | Limits with usage bars, drawdown vs limit, recent blocks, pause/kill switch | Presets (Careful/Balanced/Adventurous) with consequences in money | Per-strategy limits, advanced risk metrics (doc 05) | P1 |
+| **Backtest lab/report** | Test on history, judge honestly | Summary, trust check, 6–8 core metrics | All metrics, grid sweeps and heatmaps (P1); walk-forward, Monte Carlo, random/Bayesian sweeps, run comparison (P2) | P1 |
+| **Portfolio** | Holdings, orders, realized and unrealized P&L, fees, allocation, benchmark; account performance over any period with each sleeve's contribution (doc 05 PF-015) | Plain labels ("profit if sold now") | Exposure, correlation; per-order TCA and assumed vs observed cost per strategy (P1, simulated); TCA aggregates (P2); real fills (P3) | P1 |
+| **Risk center** | Risk profile, limits with usage bars, drawdown vs limit, recent blocks, kill switch (L1 Pause all, L2 Cancel, L3 Flatten; doc 05 §4.3) | Risk profiles (Careful by default, Balanced, Adventurous; doc 05 §2.1) with consequences in money; a looser profile needs UX-053 | Per-strategy limits within the profile, advanced risk metrics (doc 05) | P1 |
 | **Journal** | "What happened and why": orders, fills, risk decisions, state changes with reasons; notes, tags, filters | Reason sentences | Raw decision log, export | P1 |
 | **Learn hub** | Curriculum (§10), glossary, tutorials, scenarios (P2) | Path view | Search/reference view | P1 |
 | **Assistant** | Explain, answer, draft, with source chips | Simpler language | Terse, technical | P2 |
-| **Settings** | Defaults, mode, display, notifications, exchange keys (P3), AI data sharing, export | — | — | P1 |
+| **Settings** | Defaults, mode, display, notifications and channels (UX-054), exchange keys (P3), AI data sharing, export | — | — | P1 |
 
 ### 3.3 Wireframes (low fidelity)
 
@@ -198,7 +198,7 @@ Mobile:      bottom tabs Home · Portfolio · Journal · Learn · More;  Pause a
 ├──────────────────────────────────────────────────────────────────────────────────────┤
 │ Paper account                          │ Needs your attention                        │
 │ P$ 1,042.10   ▲ +4.2% since 1 Sep      │ ⚠ Trend-BTC is 12% below its best point     │
-│ Buy & hold BTC same period: ▲ +6.1%    │   (your pause limit: 15%)  [See why]        │
+│ Buy & hold BTC same period: ▲ +6.1%    │   (your tightened limit: 15%)  [See why]    │
 │ Worst drop so far: ▼ −3.8% (P$ −39)    │ ⓘ Exchange data was delayed 3 min at        │
 │ Fees paid: P$ 3.12                     │   09:14 UTC. No trades missed. [Details]    │
 ├────────────────────────────────────────┴─────────────────────────────────────────────┤
@@ -208,8 +208,8 @@ Mobile:      bottom tabs Home · Portfolio · Journal · Learn · More;  Pause a
 │ DCA-ETH     ETH/USDT  ● Running  ▲ +2.3%   ▼ −4.4%     ██░░░░░░░ 20%    9  [Open]    │
 ├──────────────────────────────────────────────────────────────────────────────────────┤
 │ Your markets (24h)                     │ Next step                                   │
-│ BTC  64,210  ▲ +1.2%  volatility: high │ Trend-BTC has made 6 trades. Why 6 trades   │
-│ ETH   3,105  ▼ −0.8%  volatility: med  │ tell you very little (4 min)  [Read]        │
+│ BTC 64,210 ▲ +1.2%  volatility: Stormy │ Trend-BTC has made 6 trades. Why 6 trades   │
+│ ETH  3,105 ▼ −0.8%  volatility: Normal │ tell you very little (4 min)  [Read]        │
 └──────────────────────────────────────────────────────────────────────────────────────┘
  Arrows and signs carry meaning; color is secondary. No "top movers", no celebrations.
 ```
@@ -218,27 +218,28 @@ Mobile:      bottom tabs Home · Portfolio · Journal · Learn · More;  Pause a
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────────┐
-│ Backtest · Trend-BTC (template) · BTC/USDT · 4h candles · 1 Jan 2022 – 30 Sep 2026   │
+│ Backtest · Trend-BTC (template) · BTC/USDT · 4h candles · 1 Jul 2020 – 30 Jun 2024   │
 │ Costs included: fee 0.10% per trade + slippage 0.05%   [change assumptions]         │
 ├──────────────────────────────────────────────────────────────────────────────────────┤
 │ IN PLAIN WORDS  (illustrative numbers)                                               │
-│ If you had started with $1,000 on 1 Jan 2022, this strategy would have ended with    │
-│ $1,480 (+48%). Simply buying and holding BTC would have ended with $2,350 (+135%).   │
+│ If you had started with $1,000 on 1 Jul 2020, this strategy would have ended with    │
+│ $1,480 (+48%). Simply buying and holding BTC would have ended with $6,860 (+586%).   │
 │ At its worst, your $1,000 would have fallen to $690 (−31%), and it took 9 months to  │
 │ get back. It made 64 trades and paid $71 in fees.                                    │
 │ Past results don't predict future ones.  [Why?]                                      │
 ├──────────────────────────────────────────────────────────────────────────────────────┤
 │ HOW MUCH SHOULD I TRUST THIS?   ◔ Low–Medium                         [What is this?] │
 │  ✓ Fees and slippage included                                                        │
-│  ✓ Covers a falling market (2022) and rising ones (2023–24)                          │
-│  ! Only 64 trades: the result could easily be luck                                   │
+│  ✓ Covers rising markets (2020–21, 2023–24) and a falling one (2022)                 │
+│  ! Only 64 trades (round trips): the result could easily be luck                     │
+│    Paper trading it will need a typed confirmation (fewer than 100)                  │
 │  ✗ You've tried 37 variations; the best one will look better than it really is       │
-│  – Not yet checked on unseen data (walk-forward, P2)                                 │
+│  – Not yet checked on unseen data (the vault, Jul 2024 – Sep 2026)  [Run once]       │
 ├──────────────────────────────────────────────────────────────────────────────────────┤
 │ [Equity curve: strategy ── vs buy & hold ┄┄ · log-scale toggle]                      │
 │ [Underwater chart: % below previous best; worst point labelled "−31%, Jun 2022"]     │
 ├──────────────────────────────────────────────────────────────────────────────────────┤
-│ Total return +48% ⓘ │ Yearly avg (CAGR) +8.6% ⓘ │ Worst drop −31% ⓘ │ In market 41% ⓘ │
+│ Total return +48% ⓘ │ Per year (CAGR) +10.3% ⓘ  │ Worst drop −31% ⓘ │ In market 41% ⓘ │
 │ Win rate 38% ⓘ     │ Avg win / avg loss 2.1× ⓘ │ Sharpe 0.62 ⓘ    │ Fees $71 ⓘ      │
 ├──────────────────────────────────────────────────────────────────────────────────────┤
 │ [Practice with simulated money] [Tweak & re-test (variation #38)] [Ask ✦] [Export]   │
@@ -255,15 +256,15 @@ Mobile:      bottom tabs Home · Portfolio · Journal · Learn · More;  Pause a
 │ 1 Market   ✓   │ Market: [BTC/USDT ▾]  Candles: [4h ▾]    │ Every 4 hours Ubik checks│
 │ 2 Entry    ✓   │ ENTRY: buy when ALL are true             │ BTC. It buys when the    │
 │ 3 Exit     ✓   │  [EMA 20 ▾][crosses above ▾][EMA 50 ▾]  ⓘ│ short-term average price │
-│ 4 Risk     !   │  [RSI 14 ▾][is below ▾][70]             ⓘ│ moves above the longer-  │
+│ 4 Risk     ✓   │  [RSI 14 ▾][is below ▾][70]             ⓘ│ moves above the longer-  │
 │ 5 Review       │  + add condition                         │ term one, unless price   │
 │                │ EXIT: sell when ANY is true              │ already rose very fast   │
 │                │  [EMA 20][crosses below][EMA 50]         │ (RSI ≥ 70). It sells when│
 │                │  [Price][falls % from entry][8]  (stop)  │ the averages cross back  │
 │                │ SIZE: [10 %] of account per trade        │ or price drops 8% from   │
 │                │                                          │ purchase. Each trade     │
-│                │ ⚠ Risk step incomplete: no account       │ risks about $8 of your   │
-│                │   drawdown pause set.  [Fix]             │ $1,000.                  │
+│                │ ⓘ Careful risk profile: it halts after a │ risks about $8 of your   │
+│                │   drop of at most 20%.  [Details]        │ $1,000.                  │
 ├────────────────┴──────────────────────────────────────────┴──────────────────────────┤
 │ Preview (last 90 days): ▲ buy / ▼ sell markers on chart · 3 signals                  │
 │ [Ask ✦ to draft rules from a description]                                            │
@@ -274,16 +275,18 @@ Mobile:      bottom tabs Home · Portfolio · Journal · Learn · More;  Pause a
 
 | ID | Requirement | Priority | Phase | Rationale / notes |
 |---|---|---|---|---|
-| UX-013 | Every screen shall show a global bar with the PAPER/LIVE text label, engine status, data freshness and a Pause-all control. | Must | P1 | Situational awareness |
-| UX-014 | Pause-all shall be reachable in ≤ 1 click/tap from every screen, including mobile, and shall act without further confirmation. Resuming shall require confirmation. | Must | P1 | Safe is easy. Kill switch semantics are in doc 05. |
+| UX-013 | Every screen shall show a global bar with the PAPER/LIVE text label, engine status, data freshness and a Pause-all control (kill-switch level L1). | Must | P1 | Situational awareness |
+| UX-014 | Pause all (kill-switch level L1, doc 05 §4.3) shall be reachable in ≤ 1 click/tap from every screen, including mobile, and shall act without further confirmation. Kill-switch levels L2 Cancel (≤ 2 clicks/taps, no confirmation) and L3 Flatten (≤ 2 clicks/taps plus an explicit confirmation) shall be reachable from every screen through the same control and from the Risk center. Resuming shall require confirmation. | Must | P1 | Safe is easy. Levels, timing and semantics are owned by doc 05 §4.3 and RK-023 (L2 completes within 10 s; L3 works in paper from P1). |
 | UX-015 | P1 shall include Home, Markets/Charts, Strategy library, Builder, Backtest lab/report, Portfolio, Risk center, Journal, Learn hub and Settings. Scanner and Assistant shall arrive in P2. | Must | P1 | Scope anchor |
-| UX-016 | The Journal shall record every signal, order, fill, risk decision and strategy state change with a plain-language reason including rule values at decision time. Users shall be able to add notes and tags and filter by strategy, type and date. | Must | P1 | Needs decision logs (docs 04/06); grounds the assistant |
+| UX-016 | The Journal shall record every signal, order, fill, risk decision and strategy state change with a plain-language reason including rule values at decision time. Users shall be able to add notes and tags and filter by strategy, type and date. | Must | P1 | Needs decision logs (doc 03 SIG-001, doc 05 RK-003, doc 06 §9 DECISION_LOG); grounds the assistant |
 | UX-017 | The Builder shall show a live plain-language readback. It shall warn about a missing exit, a missing stop or risk settings, contradictory conditions and settings prone to look-ahead bias. | Must | P1 | Understand before testing |
 | UX-018 | The Builder shall preview signals on recent chart data before a backtest. | Should | P1 | Fast intuition |
 | UX-019 | Pro users shall be able to view and edit a strategy as Python code in the same strategy model. Code-only strategies shall be labelled where no readback is available. | Should | P2 | Model owned by doc 04 |
 | UX-020 | The Backtest report shall be layered: plain summary → trust check → equity vs benchmark and underwater charts → metrics → trades. | Must | P1 | Story first |
-| UX-021 | Ubik shall support multiple named paper portfolios and shall never aggregate paper and live values. | Should | P2 | Compare without confusing |
-| UX-022 | Each library template shall state the idea, when it tends to work, when it tends to fail, trade frequency and complexity. Templates shall be labelled "educational examples, not recommendations". Buy-and-hold and DCA baselines shall always be present. | Must | P1 | Honest framing; doc 08 CMP-020 |
+| UX-021 | Ubik shall support multiple named paper accounts. Each account may hold several bots, each in its own sleeve (doc 05 PF-001). Ubik shall never aggregate paper and live values. | Must | P1 | Compare without confusing; matches doc 04 PT-004 |
+| UX-022 | Each library template shall state the idea, when it tends to work, when it tends to fail, trade frequency and complexity. Templates shall be labelled "educational examples, not recommendations". Buy-and-hold and DCA baselines shall always be present. | Must | P1 | Honest framing; doc 08 CMP-020. Baselines are reference lines computed outside the risk profile (doc 05 §2.1). |
+| UX-055 | Each strategy shall have a version history listing every version with its friendly name, content hash, author (user, AI or import), creation time, the stage of each bot running it, linked runs and trial count. The owner shall be able to start a new version from any earlier one (versions are never edited in place) and to diff any two versions as a plain-language readback plus the raw rule diff. | Should | P1 | Versions are immutable and content-hashed (doc 04 ST-008, doc 02 CAP-031) |
+| UX-056 | Ubik shall provide a comparison view for 2–4 backtest or paper runs (same or different strategies or versions), showing side by side: verdicts and trust checks, core metrics, equity and drawdown curves on shared axes, costs, round-trip counts and trial counts. It shall label mismatched assumptions per doc 04 BT-037 and show doc 04 BT-036 honesty warnings. Paper and live runs shall never be combined. | Should | P2 | Fair comparisons |
 
 ---
 
@@ -296,7 +299,7 @@ Mobile:      bottom tabs Home · Portfolio · Journal · Learn · More;  Pause a
 | Charts | Line default, ≤ 3 indicators, automatic summary | Candles, multi-pane, drawing tools, depth |
 | Strategy creation | Templates with labelled parameters and safe ranges | Full rule editor, code view (P2) |
 | Backtest metrics | 6–8 core metrics, each explained | All metrics, distributions, sweeps, exports |
-| Manual paper orders | Market and limit, with a cost preview | Stop-limit, OCO, time-in-force, post-only |
+| Manual paper orders (booked to the account's Manual sleeve, doc 05 PF-014) | Market and limit, with a cost preview | Stop-limit, OCO, time-in-force, post-only |
 | Language and density | Plain words, spacious cards | Standard jargon (hover for definitions), dense tables, shortcuts |
 
 **Never hidden in any mode:**
@@ -312,12 +315,15 @@ Mobile:      bottom tabs Home · Portfolio · Journal · Learn · More;  Pause a
 
 **Levelling up.** Ubik suggests Pro features after the relevant lessons have been completed, and only after enough time and paper experience. For example: "You've finished *Reading results* and run 10 backtests. Want to see Sortino and Calmar?" Users can switch modes at any time. Safety gates (going live, P4 leverage) are the same in both modes.
 
+**Modes are not risk profiles.** The mode changes what Ubik shows. How much risk Ubik allows comes from the versioned risk profile (doc 05 RK-005, §2.1): **Careful** (the default for every new install, in every mode), **Balanced** or **Adventurous**. Hard ceilings are the same in all three. Moving to a looser profile goes through a one-time acknowledgement flow (UX-053); moving to a tighter one is instant.
+
 | ID | Requirement | Priority | Phase | Rationale / notes |
 |---|---|---|---|---|
 | UX-023 | Ubik shall offer Guided and Pro modes, switchable at any time, with a short "what changes" notice. Guided screens shall also offer per-panel "Show advanced". | Must | P1 | One app, two depths |
 | UX-024 | The "Never hidden" items shall be visible in both modes. | Must | P1 | Honesty principle |
 | UX-025 | Feature suggestions and unlocks shall depend only on learning progress, elapsed time and paper experience, never on trade count, volume or P&L. | Must | P1 | Don't reward activity (§7) |
-| UX-026 | Mode shall change presentation and defaults only. Safety gates and risk limits shall be identical across modes. | Must | P1 | Experts aren't exempt |
+| UX-026 | Mode shall change presentation and defaults only. Safety gates and risk limits shall be identical across modes; risk latitude shall come only from the risk profile (doc 05 RK-005). | Must | P1 | Experts aren't exempt |
+| UX-053 | Moving to a looser risk profile (Careful → Balanced → Adventurous, doc 05 §2.1) shall require a one-time acknowledgement flow per profile: the onboarding knowledge checks (§2.2, Q2), the consequence shown in money (e.g. the cost of 10 losing trades in a row at the new maximum risk per trade), and a typed confirmation. The acknowledgement shall be logged. In live mode the change shall also wait for the doc 08 SEC-018 cooling-off. Moving to a tighter profile shall take effect instantly. | Must | P1 | Doc 05 RK-037. Each later loosening within a profile still needs the doc 05 RK-039 preview and confirmation. |
 
 ---
 
@@ -328,15 +334,17 @@ Mobile:      bottom tabs Home · Portfolio · Journal · Learn · More;  Pause a
 2. A "What does this mean?" panel that uses the user's own numbers. For example: *"Max drawdown −31%: at the worst point, $1,000 had become $690. Getting back to $1,000 then needed +45%."*
 3. A lesson link and, from P2, "Ask the assistant".
 
+For indicators, signals, analysis cards, alerts and scan results, the explanation also carries a **How-reliable** layer: the item's evidence label (Descriptive / Supported / Mixed / Weak / Untested, from doc 03 SIG-012) with its one-line reason (ED-028). It looks and reads differently from the backtest trust check below, which rates a backtest, not an indicator.
+
 **Plain-language results and honest framing.**
 - **Start from an amount the user chose** ("If you had started with $1,000…"). Use the conditional tense and name the period and the costs.
 - **Always pair a result with benchmarks:** buy-and-hold of the same asset, and cash. In strong bull markets, most simple strategies trail buy-and-hold after costs, and users should see that.
 - **Give the worst moment equal billing:** the worst drop in % and in money, plus the recovery time. Gains and losses use the same size and position.
 - **Show a trust check on every result.** Doc 04 supplies the statistics; this doc owns the presentation. Inputs:
-  - number of trades
+  - number of trades, counted as round trips (one entry plus its matching exit), as in every Ubik report and gate
   - length of the period and which market conditions it covered
   - whether costs are included
-  - whether the strategy was tested on unseen data (P2 walk-forward)
+  - whether the strategy was tested on unseen data (the out-of-sample vault in P1; walk-forward from P2)
   - **how many variations were tried**, because testing many parameter combinations almost guarantees a great-looking in-sample result ([Bailey, Borwein, López de Prado & Zhu](https://papers.ssrn.com/abstract=2326253))
 
   The rating has 4 steps (Low / Low–Medium / Medium / Higher), each with listed reasons. It never says "high confidence of profit".
@@ -345,14 +353,15 @@ Mobile:      bottom tabs Home · Portfolio · Journal · Learn · More;  Pause a
 
 | ID | Requirement | Priority | Phase | Rationale / notes |
 |---|---|---|---|---|
-| ED-001 | Every metric, indicator, order type, risk setting and chart element shall have a three-layer "What does this mean?" affordance: glossary tooltip; expanded explanation using the user's actual values where applicable; lesson link. | Must | P1 | Core beginner promise |
+| ED-001 | Every metric, indicator, order type, risk setting and chart element shall have a three-layer "What does this mean?" affordance: glossary tooltip; expanded explanation using the user's actual values where applicable; lesson link. Indicators and analysis items shall also show the How-reliable layer (ED-028). | Must | P1 | Core beginner promise; doc 03 SIG-011 |
 | ED-002 | Each backtest report shall open with a conditional-tense plain-language summary covering: starting amount, end value, % return, benchmark result, worst drop (% and money), recovery time, trade count and total fees. Each number shall link to its definition and inputs. | Must | P1 | Story first, verifiable |
-| ED-003 | Each backtest shall show a trust check with a rating and itemized reasons covering trade count, period and conditions, costs, variations tried, and out-of-sample status (P2). | Must | P1 | Variation counting from doc 04 |
+| ED-003 | Each backtest shall show a trust check with a rating and itemized reasons covering trade count (round trips), period and conditions, costs, variations tried, and out-of-sample status (the vault result in P1; walk-forward from P2). | Must | P1 | Variations tried come from the doc 04 trial ledger (BT-021); vault per doc 04 BT-022 |
 | ED-004 | A context-specific "past results don't predict future results" note shall sit next to every backtest and paper result, not only in a footer. Disclaimers shall be placed in onboarding, on results, in the arming flow and on the assistant panel. | Must | P1 | At point of decision; disclaimer wording from doc 08 |
 | ED-005 | Ubik shall show a range of outcomes (resampling band and drawdown range) with a plain sentence that states the downside end. | Should | P2 | Uncertainty, responsibly |
-| ED-006 | Ubik shall maintain a copy style guide with a banned-phrase list ("guaranteed", "risk-free", "can't lose", "passive income", "to the moon", "sure thing"). Automated tests shall check UI strings and assistant outputs against the list. | Must | P1 | Hype prevention |
+| ED-006 | Ubik shall maintain a copy style guide with a banned-phrase list ("guaranteed", "risk-free", "can't lose", "passive income", "to the moon", "sure thing", "will pump"). Automated tests shall check UI strings and assistant outputs against the list. | Must | P1 | Hype prevention. The single list, used by doc 03 SIG-016 and doc 08 CMP-019. |
 | ED-007 | Gains and losses shall have equal visual prominence, and drawdown shall appear wherever return appears. | Must | P1 | Symmetry |
 | ED-008 | Paper results screens shall show a standing note that live results are usually worse, with a "why" link. | Must | P1 | Expectations before P3 |
+| ED-028 | Every indicator, signal, analysis card, alert and scan result shall show its evidence label (Descriptive / Supported / Mixed / Weak / Untested, from the doc 03 SIG-012 registry) with its one-line reason, as the How-reliable layer of its explanation. The evidence label shall differ visually and verbally from the backtest trust-check rating (Low / Low–Medium / Medium / Higher). | Must | P1 | Doc 03 SIG-011, SIG-012; doc 00 principle 6. Two scales, never confused. |
 
 ---
 
@@ -369,7 +378,7 @@ Mobile:      bottom tabs Home · Portfolio · Journal · Learn · More;  Pause a
 
 ### 6.2 Must not do
 - **Promise or predict.** It never says a strategy *will* make money. Asked "Will BTC go up?", it explains why nobody knows, and offers to show what happened historically after similar conditions, labelled as history.
-- **Give personalized investment recommendations.** It doesn't tell the user to buy, sell, hold or allocate specific assets. Anthropic's [Usage Policy](https://www.anthropic.com/legal/aup) treats personalized recommendations to buy, sell, hold or allocate specific investment products as a high-risk area. That area requires review by a qualified (licensed where required) human and disclosure that AI was used. General education about how investing works is outside that requirement. Ubik's assistant therefore stays on the side of education and operating the tools. Doc 08 should confirm this reading.
+- **Give personalized investment recommendations.** It doesn't tell the user to buy, sell, hold or allocate specific assets. Anthropic's [Usage Policy](https://www.anthropic.com/legal/aup) treats personalized recommendations to buy, sell, hold or allocate specific investment products as a high-risk area. That area requires review by a qualified (licensed where required) human and disclosure that AI was used. General education about how investing works is outside that requirement. Ubik's assistant therefore stays on the side of education and operating the tools. Doc 08 CMP-028 makes this a compliance rule; its reading of the policy is marked for legal confirmation.
 - **Act autonomously.** It can't place orders, start or stop strategies, change limits or edit settings. It may *prefill* a form, which the user submits through the normal UI with its normal friction. It has no live actions at all (P3).
 - **Bypass guardrails.** It explains why limits, gates and cooling-off periods exist rather than helping around them.
 - **Invent numbers.** Every figure comes from a tool call or from app data. If something isn't in the data, it says so.
@@ -379,7 +388,7 @@ Mobile:      bottom tabs Home · Portfolio · Journal · Learn · More;  Pause a
 - **Tone.** Calm, plain and specific. The assistant admits uncertainty and avoids hype, emojis, exclamation marks and flattery. It treats losses matter-of-factly without blame. In Guided mode it uses short sentences; in Pro mode it is terse and technical.
 
 > **User:** My bot lost 3 times in a row, should I raise the position size to win it back?
-> **Assistant:** Three losses in a row is normal for this strategy. Its backtest had losing runs of up to 7 trades (Backtest #7). Raising size after losses makes a bad stretch more damaging. At your current risk of about $8 per trade (0.8%), seven straight losses would cost about 5.5% of the account. At double the risk, it would be about 10.7%. If you still want to change it, it's in Risk → Position size, where Ubik shows the dollar effect before applying it.
+> **Assistant:** Three losses in a row is normal for this strategy. Its backtest had losing runs of up to 7 trades (Backtest #7). Raising size after losses makes a bad stretch more damaging. At your current risk of about $8 per trade (0.8%), seven straight losses would cost about 5.5% of the account. At double the risk, it would be about 10.7%. If you still want to change it, it's in Risk → Position size, where Ubik shows the dollar effect before applying it. Going above 1% per trade also means leaving the Careful risk profile.
 
 (The percentages are 1 − 0.992⁷ and 1 − 0.984⁷. The assistant computes them with a tool and cites the calculation.)
 
@@ -388,10 +397,10 @@ Mobile:      bottom tabs Home · Portfolio · Journal · Learn · More;  Pause a
 | ID | Requirement | Priority | Phase | Rationale / notes |
 |---|---|---|---|---|
 | ED-009 | The assistant shall explain any on-screen element, indicator, backtest or journal entry using Ubik's data. Claims about user data shall carry clickable source chips (record IDs, data timestamps, glossary/lesson links). | Must | P2 | Grounding |
-| ED-010 | "Why did my bot do that?" answers shall come from the decision log. If no entry exists, the assistant shall say so and shall not speculate. | Must | P2 | Decision logs from docs 04/06 |
-| ED-011 | Strategy drafts from plain language shall open as editable Builder drafts with rule-by-rule readback, assumptions and clarifying questions. Drafts shall be tagged "AI-drafted" and never auto-deployed. AI-drafted variants shall count toward the trust check's "variations tried". | Must | P2 | Human authorship; doc 04 ST-021 trial ledger |
+| ED-010 | "Why did my bot do that?" answers shall come from the decision log. If no entry exists, the assistant shall say so and shall not speculate. | Must | P2 | Decision log: doc 03 SIG-001, doc 05 RK-003, doc 06 §9 DECISION_LOG |
+| ED-011 | Strategy drafts from plain language shall open as editable Builder drafts with rule-by-rule readback, assumptions and clarifying questions. Drafts shall be tagged "AI-drafted" and never auto-deployed. AI-drafted variants shall count toward the trust check's "variations tried". | Must | P2 | Human authorship; doc 04 ST-021 (AI variants) and BT-021 (trial ledger) |
 | ED-012 | The assistant's tools shall be read-only plus form-prefill. It shall not place orders, deploy/start/stop strategies, or change limits or settings, and shall have no live-trading actions. | Must | P2 | No autonomy |
-| ED-013 | The assistant shall decline personalized buy/sell/hold/allocation recommendations, certain-sounding price predictions and return promises, and shall redirect to education, history and tools. | Must | P2 | AUP high-risk area; honesty |
+| ED-013 | The assistant shall decline personalized buy/sell/hold/allocation recommendations, certain-sounding price predictions and return promises, and shall redirect to education, history and tools. | Must | P2 | AUP high-risk area; honesty; doc 08 CMP-028 |
 | ED-014 | The assistant shall be labelled as AI, stating that it can be wrong and is not advice, at the start of each session and on its panel. AI-generated content shall stay labelled wherever it is saved. External content it summarizes (news, social posts) shall be marked as third-party. | Must | P2 | AUP disclosure; doc 08 CMP-021, SEC-039 |
 | ED-015 | An evaluation set of ≥ 50 typical and adversarial prompts with expected behaviors shall run before any release that changes prompts or models. Examples: "will BTC go up", "turn on 20x leverage", "get rich fast", "why did it sell". | Must | P2 | Regression safety |
 | ED-016 | The assistant shall adapt depth to the active mode and offer "simpler" and "more detail" controls. | Should | P2 | Persona fit |
@@ -425,13 +434,14 @@ Mobile:      bottom tabs Home · Portfolio · Journal · Learn · More;  Pause a
 ### 7.3 Friction proportional to risk
 | Action | Paper (P1–P2) | Live (P3+) |
 |---|---|---|
-| Pause/stop, tighten a limit, lower size | Instant | Instant |
-| Resume a paused strategy | Confirm | Confirm + reminder of why it paused |
-| Loosen a limit, remove a stop, raise size | Confirm, showing the consequence in money ("worst case per trade: $80 → $160") | Same, plus a **cooling-off delay** before it takes effect (cancellable; 1–24 h per doc 08 SEC-018) |
+| Pause/stop, tighten a limit, lower size, move to a tighter risk profile | Instant | Instant |
+| Resume a paused strategy, or re-arm a halted one | Confirm (re-arming also needs a short note) | Confirm + reminder of why it stopped |
+| Loosen a limit, remove a stop (Adventurous profile only), raise size | Confirm, showing the consequence in money ("worst case per trade: $80 → $160") | Same, plus a **cooling-off delay** before it takes effect (cancellable; default 24 h, configurable 1–24 h, per doc 08 SEC-018) |
+| Move to a looser risk profile | One-time acknowledgement flow (UX-053) | Same, plus the cooling-off delay |
 | Deploy a strategy | Review screen | Staged path and arming flow (§2.4) |
-| Raise the live capital cap | n/a | Typed confirmation + cooling-off + passkey/2FA; step-ups ≤ 2× per 30 days (doc 05) |
+| Raise the live capital cap or a bot's allocation | n/a | Typed confirmation + cooling-off + passkey/2FA; step-ups ≤ 2× per 30 days (doc 05) |
 
-The 24-hour first-arming cooling-off period mirrors the UK's crypto promotion rules for first-time investors ([FCA PS23/6 summary](https://www.reedsmith.com/de/perspectives/2023/07/fcas-policy-statement-on-financial-promotion-rules-for-cryptoassets)). Ubik adopts it voluntarily.
+The 24-hour first-arming cooling-off period mirrors the UK's crypto promotion rules for first-time investors ([FCA PS23/6 summary](https://www.reedsmith.com/de/perspectives/2023/07/fcas-policy-statement-on-financial-promotion-rules-for-cryptoassets)). Ubik adopts it voluntarily. First arming is fixed at 24 h. Other risk-increasing live changes wait 24 h by default; the owner can set this delay between 1 and 24 h. Shortening the delay is itself risk-increasing, so it takes effect only after the current delay.
 
 **Tilt support (P2).** "Tilt" means emotional trading after losses. When Ubik sees signals of it (rapid manual overrides, loosening limits right after a loss, activity outside the user's chosen hours), it offers a dismissible pause suggestion. Users can also set self-limits: max manual trades per day, a trading-hours lock, or "lock my limits for 7 days".
 
@@ -439,7 +449,7 @@ The 24-hour first-arming cooling-off period mirrors the UK's crypto promotion ru
 - **Text label always:** "PAPER · simulated money" or "LIVE · real money".
 - **Paper:** hatched background on balances, a "P$"/"pUSDT" unit prefix, and a `[PAPER]` browser tab prefix.
 - **Live:** a solid border, the real currency code, and a `[LIVE]` tab prefix.
-- **Separation:** a separate account switcher, re-authentication to enter live (P3), totals never combined, and labelled exports. The same cues appear on mobile and in every notification.
+- **Separation:** a separate account switcher, re-authentication to enter live (P3), totals never combined, and paper exports watermarked per doc 08 CMP-012. The same cues appear on mobile and in every notification.
 
 ### 7.5 Requirements
 
@@ -448,8 +458,8 @@ The 24-hour first-arming cooling-off period mirrors the UK's crypto promotion ru
 | UX-027 | Ubik shall not include celebratory animations or sounds, streaks, points, badges, prizes or leaderboards tied to trading activity or P&L. | Must | P1 | FCA and Chapkovski evidence |
 | UX-028 | Home shall not show "top movers"/"most popular" lists. Where such lists exist (Scanner, P2) they shall include volatility and liquidity context and a lesson link. | Must | P1 | Herding evidence |
 | UX-029 | Ubik shall not use time-pressure or social-proof prompts. | Must | P1 | Dark patterns |
-| UX-030 | Risk-reducing actions shall apply immediately. Risk-increasing actions shall require confirmation showing the consequence in money, and in live mode shall apply only after a cancellable cooling-off delay (24 h for first arming; 1–24 h for limit increases). | Must | P1 | Live delay is P3; doc 08 SEC-018 |
-| UX-031 | Paper and live shall be distinguished by a persistent text label, a distinct visual treatment, a unit prefix, a tab-title prefix and notification labels. Their totals shall never be combined. | Must | P1 | Designed now so P3 is configuration, not a rewrite |
+| UX-030 | Risk-reducing actions shall apply immediately. Risk-increasing actions shall require confirmation showing the consequence in money, and in live mode shall apply only after a cancellable cooling-off delay: 24 h, fixed, for first arming; for loosening a limit, moving to a looser risk profile or raising an allocation, default 24 h, configurable 1–24 h. Shortening the delay shall itself take effect only after the current delay. | Must | P1 | Live delay is P3; doc 08 SEC-018, doc 05 RK-008 |
+| UX-031 | Paper and live shall be distinguished by a persistent text label ("PAPER · simulated money" / "LIVE · real money") in the UI and reports, a distinct visual treatment, a unit prefix, a tab-title prefix and notification labels. Their totals shall never be combined. | Must | P1 | Designed now so P3 is configuration, not a rewrite. Doc 04 PT-013 uses this label; exported files use the doc 08 CMP-012 watermark. |
 | UX-032 | Switching to a live account context shall require re-authentication. | Must | P3 | Doc 08 |
 | UX-033 | Ubik shall offer user-set self-limits and dismissible tilt-pause suggestions based on override, loss and time-of-day signals. | Should | P2 | Behavioral support |
 | UX-034 | Onboarding and backtest reports shall include sourced realistic-expectation messages: most retail traders lose; most strategies fail to beat buy-and-hold after costs; paper overstates live. | Must | P1 | Honesty principle |
@@ -459,34 +469,38 @@ The 24-hour first-arming cooling-off period mirrors the UK's crypto promotion ru
 
 ## 8. Notifications
 
-Doc 03 defines alert *conditions*; this section covers how notifications are *delivered*. There are four severity levels:
+Doc 03 defines alert *conditions*; this section covers how notifications are *delivered*. These four severity levels are used in every doc (doc 05 §9.2 uses the same names and event lists). Critical is reserved for events that can lose real money, so it exists only with live trading (P3); the same events in paper are Warnings.
 
-- **Critical** (live only, P3): kill switch fired, reconciliation mismatch, API key rejected, engine offline with live positions.
-- **Warning:** a limit is reached, a strategy stops on error, data goes stale, or the engine goes offline (paper).
+- **Critical** (live only, P3): kill switch fired, live reconciliation break, unresolved UNKNOWN order, IP ban, external activity on the account, API key rejected, or the engine offline or data stale while there are live positions.
+- **Warning:** a loss limit or other limit is reached, a strategy is halted or stops on error, a stablecoin depeg warning, a demotion, the engine offline or data stale for 2 min while bots are running or positions are open, and, in paper, the events that are Critical in live (such as the kill switch firing).
 - **Info:** a paper trade fills, a backtest finishes, or a user's own price alert fires.
 - **Digest:** a daily or weekly summary.
 
+Security alerts (doc 08 SEC-032) follow the same split: new-device logins, repeated MFA failures, arming and limit raises are Warnings; key changes, failed permission re-checks, unknown orders found in reconciliation and exchange authentication errors on a live account are Critical.
+
 | Event | Severity | Default channels | During quiet hours | Phase |
 |---|---|---|---|---|
-| Live kill switch, mismatch, live engine offline | Critical | In-app + all external | Delivered | P3 |
-| Limit reached / strategy paused / strategy error / engine offline (paper) | Warning | In-app + external | Held, shown first | P1 |
-| Data stale > 5 min | Warning | In-app; external if > 30 min | Held | P1 |
+| Live: kill switch fired, reconciliation break, unresolved UNKNOWN order, IP ban, external activity, API key rejected, engine offline or data stale with live positions | Critical | In-app + all external | Delivered | P3 |
+| Limit reached / strategy halted / strategy error / paper kill switch fired | Warning | In-app + external | Held, shown first | P1 |
+| Engine offline (paper): the external heartbeat monitor hears nothing for 90 s | Warning | External (from the monitor) + in-app once the engine is back | Held, shown first | P1 |
+| Data stale for 2 min while bots are running or positions are open (paper) | Warning | In-app + external; the in-app freshness indicator updates at once (doc 05 §4.4) | Held, shown first | P1 |
 | Paper trade filled, backtest finished | Info | In-app (external opt-in) | Batched into digest | P1 |
 | User-defined price alert | Info | User's choice | User's choice | P1–P2 |
 | Daily/weekly summary | Digest | Email or Telegram | Sent at chosen time | P2 |
 
-Template: `[PAPER|LIVE] What happened · What Ubik did · Current state · What you can do · link`. For example: *"[PAPER] Trend-BTC paused: down 15.2% from its best point (limit 15%). Position kept. Review →"*. Notifications use no hype and no "don't miss out" language.
+Template: `[PAPER|LIVE] What happened · What Ubik did · Current state · What you can do · link`. For example: *"[PAPER] Trend-BTC halted: down 20.3% from its best point (limit 20%). Position kept. Re-arm or review →"*. Notifications use no hype and no "don't miss out" language.
 
 | ID | Requirement | Priority | Phase | Rationale / notes |
 |---|---|---|---|---|
-| UX-036 | Ubik shall classify notifications as Critical/Warning/Info/Digest with the defaults above. Users may adjust them, except that Critical can't be disabled while live trading is on. Ubik shall provide an in-app notification center with history. | Must | P1 | Critical is P3 |
-| UX-037 | Ubik shall support at least one external channel in P1 (Telegram bot, email or ntfy push). Further channels (Discord webhook, web push) shall follow in P2. | Should | P1 | Owner to pick the first; dispatcher in doc 06 |
-| UX-038 | Quiet hours shall hold Warnings, batch Info into the digest, and deliver only Critical (live). | Must | P1 | Crypto runs 24/7; people sleep |
+| UX-036 | Ubik shall classify notifications as Critical/Warning/Info/Digest with the defaults above. Users may adjust them, except that Critical can't be disabled while live trading is on. Ubik shall provide an in-app notification center with history. | Must | P1 | Critical exists only with live trading (P3); in paper the same events are Warnings. Event lists match doc 05 §9.2 and EX-026; security alerts per doc 08 SEC-032. |
+| UX-037 | Ubik shall deliver notifications in-app and through at least one external channel chosen by the owner in P1 (Telegram bot, email or ntfy). Further channels (Discord, webhook, web push) shall follow in P2. | Must | P1 | Owner to pick the first; dispatcher in doc 06 AR-021. NFR-017 needs an out-of-app path. "Push" means web/PWA push only (P2). |
+| UX-038 | Quiet hours shall hold Warnings, batch Info into the digest, and deliver Critical alerts at once (Critical exists only with live trading, P3). | Must | P1 | Crypto runs 24/7; people sleep. Doc 06 NFR-017: paper alerts may wait until quiet hours end. |
 | UX-039 | Every notification shall follow the template and carry the PAPER/LIVE label. | Must | P1 | Clarity |
 | UX-040 | Ubik shall not send price-movement notifications by default. Only alerts the user creates shall fire. | Must | P1 | Arnold et al.; FCA |
-| UX-041 | Engine-offline alerts shall come from a watchdog independent of the trading engine. | Must | P1 | Doc 06 |
+| UX-041 | Engine-offline alerts shall come from an off-host external heartbeat monitor, independent of the trading engine. The engine shall report to it every 30 s, and 90 s of silence shall alert the owner through the external channel (Warning in paper, Critical in live). | Must | P1 | Doc 06 AR-032, NFR-017 (alert within 2 min). Not the dead-man's switch (doc 05 RK-025, P3), which cancels orders. |
 | UX-042 | Repeated notifications shall be grouped and rate-limited (e.g., ≤ 1 per event type per strategy per 15 min), except Critical. | Should | P1 | Fatigue |
 | UX-043 | External notifications shall never contain secrets, and shall offer an option to hide balances and amounts. | Must | P1 | Doc 08 |
+| UX-054 | Settings → Notifications shall let the owner add, send a test message to, and remove each external channel (P1: Telegram, email, ntfy; P2: web push, Discord, webhook). It shall show each channel's last successful delivery and raise an in-app warning when a channel fails. Channel credentials (bot tokens, email passwords, ntfy topics, webhook URLs) shall be handled as secrets under doc 08 SEC-014. | Must | P1 | A silent channel is worse than none. Doc 05 §9.1's pre-live checklist needs two tested channels. |
 
 ---
 
@@ -513,7 +527,7 @@ Template: `[PAPER|LIVE] What happened · What Ubik did · Current state · What 
 | Locale | Separators per locale; overridable | 1.042,10 € |
 | Time | Stored in UTC; displayed in the user's time zone with a label. Candle boundaries are explained (daily candles usually close 00:00 UTC). Relative times show the absolute time on hover. | 14:02 CEST (12:02 UTC) |
 
-**Mobile is monitor-first.** Home, Portfolio, Journal, notifications, Pause-all, backtest reports and Learn are fully supported on mobile. Building strategies works but is designed for desktop. Charts reduce to one pane with the summary sentence on top.
+**Mobile is monitor-first.** Home, Portfolio, Journal, notifications, Pause-all, backtest reports and Learn are fully supported on mobile. Building strategies works but is designed for desktop. At phone widths (≥ 320 px), charts show a single pane with touch gestures and the summary sentence on top; sub-panes appear from tablet width up (doc 03 TA-024).
 
 **Accessibility (WCAG 2.2 AA).**
 - **Contrast:** 4.5:1 for text ([1.4.3](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html)) and 3:1 for chart lines, markers and focus indicators ([1.4.11](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html)). Color is never the only cue ([1.4.1](https://www.w3.org/WAI/WCAG22/Understanding/use-of-color.html)).
@@ -530,12 +544,12 @@ Template: `[PAPER|LIVE] What happened · What Ubik did · Current state · What 
 |---|---|---|---|---|
 | UX-044 | Gains, losses and buy/sell markers shall always carry a non-color cue. Ubik shall offer default, color-blind-safe and "red = up" palettes. | Must | P1 | WCAG 1.4.1; locales |
 | UX-045 | All screens shall target WCAG 2.2 AA. Core journeys (onboarding → backtest → paper deploy → pause) shall pass automated checks (e.g., axe) in CI, plus a manual keyboard-only and screen-reader pass before each release. | Must | P1 | Testable conformance |
-| UX-046 | Every chart shall have a text summary, a data-table alternative and keyboard-operable crosshair inspection. Live values shall be announced politely, at most once every few seconds per region. | Must | P1 | W3C complex images |
+| UX-046 | Every chart shall have a text summary, a data-table alternative and keyboard-operable crosshair inspection. Live values shall be announced politely, at most once every few seconds per region. | Must | P1 | W3C complex images. Lightweight Charts draws on a canvas, so Ubik builds this accessible layer itself (doc 06 AR-027); verify in the P1 spike. |
 | UX-047 | Ubik shall not flash price changes and shall honor reduced-motion preferences. | Must | P1 | WCAG 2.3.1; FCA DEP evidence |
 | UX-048 | Numbers shall follow the formatting table, using exchange metadata for precision. | Must | P1 | Doc 06 metadata |
 | UX-049 | Timestamps shall be stored in UTC and displayed in the user-selected time zone with a visible label, with a UTC display option. | Must | P1 | 24/7, multi-exchange |
 | UX-050 | Dark and light themes shall both meet contrast requirements, with paper/live cues unchanged. | Must | P1 | Comfort and safety |
-| UX-051 | At phone widths (≥ 320 px), Home, Portfolio, Journal, notifications, Pause-all, backtest reports and Learn shall be fully usable. | Should | P1 | Monitor-first mobile |
+| UX-051 | At phone widths (≥ 320 px, WCAG 1.4.10 reflow), Home, Portfolio, Journal, notifications, Pause-all, backtest reports and Learn shall be fully usable. Charts shall show a single pane with touch gestures and the summary sentence on top; sub-panes shall be available from tablet width up. | Should | P1 | Monitor-first mobile; doc 03 TA-024 follows this |
 | UX-052 | Drag interactions shall have single-pointer/keyboard alternatives. Touch targets shall be ≥ 24 px (goal 44 px on mobile). | Must | P1 | WCAG 2.5.7/2.5.8 |
 
 ---
@@ -602,19 +616,19 @@ Template: `[PAPER|LIVE] What happened · What Ubik did · Current state · What 
 
 ## 12. Dependencies on other docs
 
-- **04:** the strategy model (builder readback and code view), metric definitions, variation counting and out-of-sample status for the trust check, Monte Carlo bands, and decision logs.
-- **05:** human-readable risk rule metadata, block/resize reasons, pause/kill-switch semantics, limit presets per profile, the staged path (S0–S5) with gate values, and demotion rules.
-- **06:** health signals, the independent watchdog, decision-log storage, exchange metadata, UTC timestamps, LLM integration and data flow, and a chart library with accessibility hooks.
-- **08:** disclaimer wording, AI data sharing and the AUP reading, channel security, re-auth/2FA, and jurisdiction rules.
-- **03:** indicator explanations, plus scanner and alert conditions.
+- **04:** the strategy model (builder readback, code view and versions), metric definitions, the trial ledger (BT-021) and out-of-sample vault (BT-022) for the trust check, Monte Carlo bands (P2), the parity replay (PT-011), S1 progress (PT-014) and gate overrides (PT-015).
+- **05:** human-readable risk rule metadata, block/resize reasons, the Careful/Balanced/Adventurous risk profiles (RK-005, §2.1), kill-switch levels L1–L3 (§4.3), stale-data handling (§4.4), the Manual sleeve (PF-014), account performance (PF-015), the staged path (Draft, S0–S5) with gate values, alert event lists (§9.2), and demotion rules.
+- **06:** health signals, the external heartbeat monitor (AR-032), decision-log storage (§9 DECISION_LOG), the quick-start dataset (DA-023), exchange metadata, UTC timestamps, LLM integration and data flow, and the chart library (Lightweight Charts, AR-027), on top of which Ubik builds its own accessible layer.
+- **08:** disclaimer wording, AI data sharing and the assistant rule (CMP-028), channel credential protection (SEC-014), the paper export watermark (CMP-012), re-auth/2FA, and jurisdiction rules.
+- **03:** indicator explanations, evidence labels (SIG-011, SIG-012), volatility states (MA-001), plus scanner and alert conditions.
 
 ---
 
 ## Open questions for the owner
 
 1. **Starting level:** Should Ubik treat you as a beginner (Guided) or intermediate by default?
-2. **Graduation gates:** Should "30 days on paper" and the other gates be hard rules even for you, or overridable? I recommend overridable only after a 24 h delay, with the override logged.
-3. **Notifications:** Which external channel should come first (Telegram, email or Discord)? What are your quiet hours and time zone?
+2. **Graduation gates:** Overrides follow doc 04 PT-015 (duration, round-trip count and same version never; other S1 criteria only under the Adventurous profile, logged, after a 24 h cooling-off). Your answer is tracked in doc 10 Q-15.
+3. **Notifications:** Which external channel should come first (Telegram, email or ntfy)? What are your quiet hours and time zone?
 4. **Display:** Home currency (USD, USDT, EUR, other)? Language (English only, or others)? Any color-vision or accessibility needs?
 5. **Realistic amount:** Roughly what would you eventually trade with real money? This sets the default paper balance.
 6. **AI assistant:** Are you comfortable sending strategy and journal data to Anthropic's API? What monthly AI spend is acceptable?
@@ -631,7 +645,7 @@ Template: `[PAPER|LIVE] What happened · What Ubik did · Current state · What 
 | Assistant invents numbers or reasons | Bad decisions, lost trust | Tool-sourced numbers only, source chips, "not in data" behavior, eval set (ED-015) |
 | Gamification creeps back via learning features | Overtrading | UX-025/UX-027 also apply to learning; periodic ethics review against §7.2 |
 | Beginner and pro needs bloat the UI | Nobody served well | Two modes, per-panel disclosure, strict "never hidden" list, P1 scope discipline |
-| Real-time chart accessibility is hard | Excluded users; rework | Text summaries and tables from day one; choose a chart library with accessibility hooks |
+| Real-time chart accessibility is hard | Excluded users; rework | Text summaries and tables from day one; Ubik builds its own accessible layer over the canvas chart (doc 06 AR-027) and verifies it in the P1 spike |
 | Notification fatigue hides a critical alert | Missed incident | Severity model, rate limits, digests, Critical-only bypass |
 | Lessons become stale or wrong | Misinformation | Sources, review dates, yearly review (ED-026) |
 | Multi-user later turns features into regulated activities | Legal exposure | Doc 08 review before P4; neutral "defaults" language now |
