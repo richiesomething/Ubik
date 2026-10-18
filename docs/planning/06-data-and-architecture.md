@@ -263,9 +263,12 @@ flowchart LR
     RISK[Risk engine]
     OMS[OMS / execution]
     SIM[SimVenue]
-    LIVE[LiveVenue + pre-trade guard]
+    LIVE[LiveVenue client]
     LED[Portfolio & ledger]
     SCH[Scheduler]
+  end
+  subgraph GWP[gateway process - P3]
+    GW[Execution gateway<br/>only holder of keys,<br/>allow-list + max notional]
   end
   subgraph WRK[worker processes]
     BT[Backtester & optimizer<br/>same strategy/risk/OMS/SimVenue code]
@@ -283,7 +286,8 @@ flowchart LR
   BUS[[Valkey Streams]]
 
   EX <--> ING
-  EX <--> LIVE
+  LIVE <--> GW
+  GW <--> EX
   DSRC --> BF
   ING --> IND --> STR --> RISK --> OMS
   OMS --> SIM --> LED
@@ -310,7 +314,7 @@ flowchart LR
 | **Backtest** | `SimClock` (jumps event to event) | `HistoricalFeed` (snapshot) | `SimVenue` | Ephemeral |
 | **Paper** | `WallClock` | `LiveFeed` | `SimVenue` (same code, fills against the live book) | Paper (Postgres) |
 | **Shadow** (P3) | `WallClock` | `LiveFeed` | `SimVenue` for fills, plus `LiveVenue` **read-only** to compare simulated vs. achievable fills | Paper |
-| **Live** (P3) | `WallClock` | `LiveFeed` | `LiveVenue` behind a pre-trade guard that can't be bypassed | Live, with reconciliation (doc 05) |
+| **Live** (P3) | `WallClock` | `LiveFeed` | `LiveVenue` client → execution `gateway` (holds the keys; can't be bypassed) | Live, with reconciliation (doc 05) |
 
 A single **composition root** wires the adapters together from `mode` in config. Strategy code is identical in all modes. It may use only the injected `Clock`, events and order-intent API. It may not call `datetime.now()`, open network connections, or import adapters.
 
@@ -365,7 +369,7 @@ On restart, the engine loads every order in `PENDING_SUBMIT` or `OPEN`, queries 
 | AR-016 | Order events, fills and ledger entries shall be append-only. Positions and balances shall be derived, snapshotted and rebuildable. | Must | P1 | Auditability (doc 05). |
 | AR-017 | The UI shall receive real-time updates via SSE and send commands via REST, using an API client generated from OpenAPI. | Must | P1 | Simple and robust. |
 | AR-018 | Configuration shall be layered (defaults → file → env → DB), validated at startup, and every runtime change shall be audited. | Must | P1 | Safe changes. |
-| AR-019 | The live venue shall start only if `mode: live` is set, credentials are verified as trade-only (no withdrawals), the user has explicitly unlocked live mode in the UI with re-authentication, and a risk profile is active. Otherwise the engine shall refuse and explain why. | Must | P3 | Designed in P1 so that going live is a config change, not a rewrite (docs 05, 08). |
+| AR-019 | Live execution shall run in a separate `gateway` process, the only component that decrypts exchange credentials. It shall start only if `mode: live` is set, credentials are verified as trade-only (no withdrawals), the user has armed live mode in the UI with step-up re-authentication, and a risk profile is active. Otherwise it shall refuse and explain why. | Must | P3 | Designed in P1 so that going live is a config change, not a rewrite (docs 05; 08 SEC-001/003/009). |
 | AR-020 | Ubik shall provide a shadow mode comparing simulated fills with the live book and with read-only venue state. | Should | P3 | Staged rollout. |
 | AR-021 | A persisted scheduler (with missed-run policy) and a notification service (in-app plus ≥ 1 push channel, with dedup, rate limits and quiet hours that critical alerts bypass) shall be provided. | Must | P1 | Unattended always-on bot. |
 | AR-022 | Every user-owned table shall carry `workspace_id`, with authorization enforced in the API layer. | Should | P1 | Cheap path to P4 multi-user. |
@@ -407,7 +411,7 @@ Doc 02 owns the overall build-vs-reuse decision. This is the architecture view.
 - Precompute indicators in vectorized form before the event loop, so the loop only decides and simulates fills.
 - Parallelize parameter sweeps across workers.
 - Offer a vectorized "screening" backtest for wide sweeps, then confirm finalists with the event-driven engine (doc 04).
-- **Indicator parity:** in live mode, recompute indicators with the *same vectorized function* over a warm-up window at each bar close. That costs microseconds for 1m bars and removes a classic parity bug: a separate incremental implementation drifting from the batch one.
+- **Indicator parity:** doc 03 specifies one closed-bar, incremental indicator engine used in every mode, tested against TA-Lib batch output. I support that design. As a fallback for any indicator without an incremental version, recompute it with the batch function over a warm-up window at each bar close. That costs microseconds for 1m bars and avoids two implementations drifting apart.
 
 ### 8.3 AI assistant integration (UX in doc 07)
 
@@ -432,7 +436,7 @@ Doc 02 owns the overall build-vs-reuse decision. This is the architecture view.
 |---|---|---|---|---|
 | AR-024 | The engine, analysis and backtester shall be written in Python 3.13 (minimum 3.12) with locked dependencies, polars/numpy as the dataframe stack, and strict static typing in core modules (OMS, ledger, risk, adapters). | Must | P1 | Correctness, performance. |
 | AR-025 | Indicators shall come from TA-Lib or Ubik implementations validated against reference values. Unmaintained libraries (e.g. pandas-ta) shall not be used. | Must | P1 | Supply-chain risk. |
-| AR-026 | Paper and live shall compute indicators with the same functions as backtests, over a warm-up window. A parity test shall assert identical outputs (±1e-9) on recorded data. | Must | P1 | Sim-live parity. |
+| AR-026 | All modes and features (chart, scanner, strategies, backtest, paper, live) shall use the same indicator engine (doc 03). Any indicator without an incremental implementation shall be recomputed over a warm-up window with the batch function. A CI parity test shall assert streaming = batch (±1e-9) on recorded data. | Must | P1 | Sim-live parity (doc 03 TA-003). |
 | AR-027 | The UI shall be TypeScript/React. Price charts shall use Lightweight Charts with the attribution its license requires. | Must | P1 | License compliance. |
 | AR-028 | Before P1 build, a ≤ 2-week NautilusTrader spike shall be run against the §8.1 criteria and the outcome recorded as an architecture decision record (ADR). | Should | P1 | Don't reinvent an engine if one fits. |
 | AR-029 | The assistant shall use the Anthropic API with per-route models (default `claude-opus-5-5`; `claude-sonnet-5-5`, `claude-haiku-5-5`). It shall have read-only tools and draft-only actions, shall never place orders or change risk or mode settings, shall enforce a monthly spend cap, and shall state only numbers taken from tool results, with timestamps. | Must | P2 | Safety; no made-up ("hallucinated") figures. |
@@ -488,7 +492,7 @@ Key design points:
 **Deployment.** One `docker compose up`, with images built for **amd64 and arm64** (PC, Apple-silicon Mac, Raspberry Pi 5, ARM VPS). Services:
 
 - `postgres` (TimescaleDB image) and `valkey`
-- `engine`, `api` (also serves the web app) and `worker` (scalable)
+- `engine`, `api` (also serves the web app) and `worker` (scalable); `gateway` from P3
 - `caddy` for TLS
 - `backup`
 - optional `observability` profile: Prometheus, Grafana, Uptime Kuma
@@ -555,7 +559,7 @@ Ubik is **not** high-frequency trading. Targets favor reliability and correctnes
 | NFR-005 | After a WS drop, Ubik shall reconnect in ≤ 5 s p95 and backfill missed candles in ≤ 2 min, or flag a gap. | Must | P1 | Completeness. |
 | NFR-006 | After a crash or restart at any point, Ubik shall resume with **zero duplicate orders and zero lost fills** (proven by chaos tests), resuming bots only after reconciliation. Shutdown shall be graceful: stop new intents, finish persistence, then exit. | Must | P1 | Safety. |
 | NFR-007 | Money arithmetic shall use Decimal/`NUMERIC` with venue precision rules. Paper ledgers shall reconcile exactly, and live differences shall be explained down to the venue's rounding (doc 05). | Must | P1 | Accounting accuracy. |
-| NFR-008 | An event-driven backtest of 1 instrument × 5 years of 1m (~2.6M candles) with a template strategy shall finish in ≤ 60 s on 4 vCPU / 8 GB. 10 instruments shall finish in ≤ 10 min. | Must | P1 | "Years of 1m in minutes." |
+| NFR-008 | On the reference machine (4 vCPU / 8 GB), an event-driven backtest with a template strategy shall finish 1 instrument × 1 year of 1m (~525K candles) in ≤ 60 s, and 1 instrument × 5 years in ≤ 5 min. Stretch goal for P2: 5 years in ≤ 60 s. | Must | P1 | "Years of 1m in minutes." Matches doc 04 BT-018. |
 | NFR-009 | Vectorized screening shall evaluate ≥ 1,000 parameter sets × 1 instrument × 1 year of 1m in ≤ 10 min. | Should | P2 | Optimization (doc 04). |
 | NFR-010 | The same snapshot, strategy version, config, seed and engine version shall produce byte-identical trade lists and metrics. | Must | P1 | Golden tests, honesty. |
 | NFR-011 | Default retention: candles forever; recorded trades 2 years; L2 snapshots 1 year; logs 30 days; metrics 90 days; orders, fills, ledger and audit **never deleted** (≥ 7 years or the jurisdiction's requirement). Configurable, with a disk forecast. | Should | P1 | Tax and audit (doc 08). |
