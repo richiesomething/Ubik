@@ -50,7 +50,7 @@ class TrendBTC(Strategy):
 | **Ledger** | Decimal ledger | Persisted decimal ledger | Exchange balances + internal ledger + reconciliation (doc 05) |
 | **Indicators** | Shared library (doc 03) | Shared | Shared |
 
-Parity is *architectural*: the engine kernel, event ordering and accounting are shared, and only the ports change. [NautilusTrader](https://nautilustrader.io/blog/why-nautilustrader-exists/) is built the same way ("parity is built into the architecture rather than relying on convention"), which makes it a strong candidate to reuse as Ubik's engine core. It is open source ([LGPL-3.0](https://github.com/nautechsystems/nautilus_trader)) with a Rust core and Python strategies, it has Binance, Bybit, OKX, Coinbase and Kraken adapters, and its v2 runtime was at [2.0.0rc4 in September 2026](https://newreleases.io/project/github/nautechsystems/nautilus_trader/release/v2.0.0rc4). The build-vs-reuse decision belongs to doc 02, and the requirements below hold either way. **Code parity does not guarantee result parity**, which is why §8.4 adds divergence monitoring.
+Parity is *architectural*: the engine kernel, event ordering and accounting are shared, and only the ports change. [NautilusTrader](https://nautilustrader.io/blog/why-nautilustrader-exists/) is built the same way ("parity is built into the architecture rather than relying on convention"). It is open source ([LGPL-3.0](https://github.com/nautechsystems/nautilus_trader)) with a Rust core and Python strategies, but its v2 rewrite was still a release candidate in October 2026. Doc 02 therefore recommends that Ubik build its **own thin event-driven core**, run a 2-week trial build (a "spike") to evaluate NautilusTrader v2 at the start of P1, and use other frameworks as test oracles. The requirements below hold whichever engine wins. **Code parity does not guarantee result parity**, which is why §8.4 adds divergence monitoring.
 
 ### 1.3 State, parameters, timeframes, assets, versioning
 
@@ -154,7 +154,7 @@ The assistant can translate an idea into rule JSON (or a code diff in pro mode),
 
 ### 4.1 Approach
 
-The **event-driven** engine is the source of truth for every reported result, for paper trading and for graduation. P1 needs nothing else, because its optimization grids are small. In P2 a **vectorized screener** handles big sweeps: it is approximate but runs thousands of combinations per minute, and its top-N candidates are re-run event-driven. vectorbt is one option; its open version is [Apache 2.0 + Commons Clause](https://vectorbt.dev/terms), which is fine for personal use but restricts selling a product built mainly on it, a P4 issue for doc 02. A consistency test runs reference strategies in both engines and flags disagreement.
+The **event-driven** engine is the source of truth for every reported result, for paper trading and for graduation. P1 needs nothing else, because its optimization grids are small. In P2 a **vectorized screener** handles big sweeps: it is approximate but runs thousands of combinations per minute, and its top-N candidates are re-run event-driven. Ubik builds the screener itself on NumPy/Numba-style arrays. vectorbt is excluded as a dependency because its [Commons Clause](https://vectorbt.dev/terms) forbids selling a product built on it (doc 02), but it remains fine for private research and as a test oracle. A consistency test runs reference strategies in both engines and flags disagreement.
 
 ### 4.2 Data granularity
 
@@ -181,7 +181,7 @@ Data sourcing is covered in doc 06.
 | **Partial fills** | Fill per bar capped at a **participation rate** of that bar's volume (default 10 %); the rest keeps resting | Rate |
 | **Queue position** (P2) | Back-of-queue: fills only after the volume ahead at that price has traded | On/off |
 | **Stop** | Triggers when price crosses the stop and fills at the **worse of the stop price and the first post-trigger price**, plus slippage. (Freqtrade fills stops exactly at the stop price "even if low was lower" ([docs](https://www.freqtrade.io/en/stable/backtesting/)), which is optimistic.) | Slippage |
-| **Rejects** | Below minimum notional, wrong tick or step, insufficient balance, post-only order that would cross: rejected exactly as the exchange would | none |
+| **Rejects / expiries** | Below minimum notional, wrong tick or step, insufficient balance, post-only order that would cross: rejected exactly as the exchange would. Orders that would execute outside a venue's price band expire, as under Binance's [Price Range Execution Rule](https://developers.binance.com/en/docs/products/spot/CHANGELOG) (introduced March 2026) | none |
 
 **Slippage** (expected price vs actual fill) has four models:
 
@@ -205,7 +205,7 @@ The P1 default is max(spread-based, a conservative floor) together with the part
 
 ### 4.5 Reproducibility
 
-Each run writes a **manifest**: data snapshot ID and hash, strategy version hash, parameters, engine version, fee/slippage/latency/rule model versions, seed and full config. Re-running the manifest must give **bit-identical** trades and metrics. **Golden tests** (reference strategies with stored expected results) run in CI and guard every engine change.
+Each run writes a **manifest**: data snapshot ID and hash, strategy version hash, parameters, engine version, fee/slippage/latency/rule model versions, seed and full config. Re-running the manifest must give **bit-identical** trades and metrics. **Golden tests** (reference strategies with stored expected results) run in CI and guard every engine change. They are complemented by *differential tests*: the same reference strategies run privately through Freqtrade, NautilusTrader and vectorbt, and Ubik explains every difference in trades (doc 02).
 
 | ID | Requirement | Priority | Phase | Rationale / notes |
 |---|---|---|---|---|
