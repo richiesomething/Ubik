@@ -1,8 +1,11 @@
 # Market & Technical Analysis
 
-*Ubik planning doc 03. Scope: technical analysis and charting (TA), market analysis (MA), and the scanner, signals and alerts (SIG). Sources checked 2026-10-18.*
+*Ubik planning doc 03. Scope: technical analysis and charting (TA), market analysis (MA), and the scanner, signals and alerts (SIG). Sources checked 2026-10-18. Updated 2026-10-18 for **Hyperliquid as the primary venue** (D-45; details in [doc 11](11-hyperliquid-integration.md), cited here by HL-xxx IDs rather than repeated).*
 
 ## Summary
+
+- **Hyperliquid (HL) is the primary venue; Binance is secondary** (D-45). Ubik analyses HL spot (UBTC, UETH, USOL, HYPE against USDC) and HL perps (BTC, ETH, SOL). Because a **1× isolated perp is a P1 trading vehicle** (D-46 as amended by the lead), the perp's **mark price, oracle price, hourly funding and open interest are P1 data**, not P2 analysis extras. Binance (USDⓈ-M perps) and Coinbase (USD spot) supply the long *proxy* history, always labelled with a fidelity grade (D-52, HL-035).
+- **The owner's horizon is 5m–1h, starting at 1h** (Q-04). Analysis defaults to 1h bars. Every timeframe shows how big a typical bar move is next to the round-trip cost (MA-032), because at 5m a round trip eats most of a typical move.
 
 - **Build one indicator engine first, and use it everywhere.** The chart, scanner, alerts, strategies, backtests and paper/live trading all call the same code. It works on closed bars only and updates incrementally (one new bar at a time, without recomputing history). Tests check that its streaming output matches a batch reference (TA-Lib). This engine is what makes "sim-live parity" real.
 - **Keep "describing the market" separate from "predicting it", and label every output with how strong the evidence is.** The research is reasonably consistent:
@@ -21,7 +24,8 @@
 
   There is no "buy score".
 - **Store all data point-in-time.** Each value records when it happened and when it could first have been known. Revisable data (on-chain, sentiment, macro, ETF flows) is stored append-only. Backtests that use revised history are flagged as optimistic.
-- **Start recording derivatives and market-wide data in P1, even though analysis of it ships in P2.** Free history is short or missing:
+- **Start recording derivatives and market-wide data in P1.** HL perp data (mark, oracle, funding, OI) is *used* from P1; most other derivatives and market-wide analysis ships in P2. Free history is short or missing:
+  - Hyperliquid's public API keeps only the last **5,000 candles** per interval (about 3.5 days of 1m), and real HL perp trading starts on **2023-02-26**. Ubik records HL from day one (HL-032).
   - Binance's API serves only 30 days of open interest and long/short ratios.
   - Historical BTC dominance from CoinGecko is paid-only.
 - **Use free data first and track licenses.** Exchange APIs, Deribit, alternative.me, DefiLlama, FRED/ALFRED and Coin Metrics Community cover most of P2. Several of these are non-commercial or require attribution, which matters if Ubik ever goes multi-user (P4).
@@ -110,6 +114,8 @@ Abbreviations, once:
 **Multi-timeframe.**
 - Timeframes: 1m, 5m, 15m, 1h, 4h, 1d, 1w. All are built from a stored 1-minute base series with UTC boundaries.
 - A 1h strategy may read the daily trend, but it sees only the *last closed* daily bar.
+- **Default timeframe: 1h** (the owner's starting horizon, Q-04). 15m is the next step once a 1h strategy has survived paper trading; 5m is labelled *Experimental*. 4h and 1d remain available as trend filters.
+- **On Hyperliquid the 1m base comes from Ubik's own recorder** (HL-032), because the public API returns only the last 5,000 candles per interval. Older 1m bars come from basis-aligned proxy history (Binance USDⓈ-M perps for HL perps, Coinbase USD for HL spot), each bar carrying `source_venue` and a fidelity grade A–D (HL-034, HL-035). Charts show the grade so a proxy wick is never mistaken for an HL print.
 
 **Libraries** (doc 02 owns build-vs-reuse):
 - **[TA-Lib](https://pypi.org/project/TA_Lib/) 0.8.2** (pinned; BSD license) as the batch reference. Its wheels have bundled the C library since version 0.6.5, and it supports NumPy 2.
@@ -188,7 +194,8 @@ All P2 models are fitted on *expanding windows only*. A model fitted on all hist
 
 Uses:
 - position sizing and stop distances (doc 05);
-- a beginner "typical daily move" ("BTC moves about ±2.1% on a typical day right now").
+- a beginner "typical daily move" ("BTC moves about ±2.1% on a typical day right now");
+- a **typical bar move per timeframe** set against the round-trip cost (MA-032). As a rough guide at recent volatility, BTC's median 1h move is a few tens of basis points, so an HL perp round trip at tier-0 taker fees (about 9 bp) costs a noticeable fraction of it; at 5m the typical move is only around 10–15 bp, so the same round trip eats most of it. Ubik computes the live figures rather than relying on these examples.
 
 ### 3.3 Correlation and cointegration
 
@@ -231,24 +238,43 @@ These feed **execution and risk**: doc 05's slippage model and the scanner's liq
 
 Store per-minute depth bands (kept forever) plus raw top-20 snapshots, retained per doc 06 NFR-011. Shorter raw windows are a configurable disk-saving option, shown in the NFR-011 disk forecast. Full order-book diffs are heavy.
 
+**Hyperliquid's order book arrives as full snapshots, not deltas.** The `l2Book` channel sends the whole visible book each time: 20 levels per side, or 5 levels with the `fast` option. Officially a push happens on a block at least 0.5 s after the previous push; on 2026-10-18 we measured about every 5.4 s for 20 levels and about every 0.5 s for `fast` (measured, not guaranteed; doc 11 §4.5). So on HL Ubik:
+- records **both** the fast 5-level book (~0.5 s) and the 20-level book (~5.4 s), plus a coarser-price variant for wider depth bands (HL-032);
+- treats each snapshot as complete (no sequence numbers to stitch), de-duplicates identical snapshots, and flags a gap when snapshots stop;
+- computes spread and top-of-book from `bbo` and the fast book, and depth bands from the 20-level book. Depth more than about 20 levels from the touch is not visible in real time.
+
+HL spot books are much thinner than HL perp books (BTC perp roughly 58× the volume of UBTC spot; doc 11 §3.1), so liquidity cards show the two side by side for the vehicle comparison (HL-006).
+
 ### 3.6 Derivatives
 
-Perpetual futures ("perps": futures with no expiry, kept near spot by periodic **funding** payments between longs and shorts) dominate price discovery. They matter even to spot-only traders.
+Perpetual futures ("perps": futures with no expiry, kept near spot by periodic **funding** payments between longs and shorts) dominate price discovery. On Hyperliquid they are also a **P1 trading vehicle**: a strategy may hold a 1× isolated perp instead of spot (D-46; paper shorts at ≤ 1× are allowed from P1 per the lead amendment, ST-010 in doc 04). So the perp metrics a position depends on (mark price, oracle price, funding, open interest) move from "P2 analysis" to **P1 data needed to trade** (MA-028). Market-wide crowding analysis built on them stays P2.
 
 | Metric | Meaning | Caveat |
 |---|---|---|
 | Funding (per venue, OI-weighted, annualized) | Positive = longs pay shorts, so the crowd is leveraged long | Intervals vary (1h/4h/8h); store predicted *and* settled values |
-| Open interest (OI) | Total open contracts | The Binance API keeps only 30 days ([docs](https://developers.binance.com/docs/derivatives/coin-margined-futures/market-data/Top-Trader-Long-Short-Ratio)); daily archives exist on data.binance.vision ([issue](https://github.com/binance/binance-public-data/issues/211)) |
+| HL funding (P1) | Paid **every hour**; payment = position size × **oracle** price × rate. Annualized = hourly rate × 8,760 (24 × 365). A running cost for a long perp, income for a short | Capped at 4% per hour. HL charged 8-hourly until about mid-2023; normalize early history (doc 06). Measured BTC averages: about 24%/yr in 2024, 10.6% in 2025, 5.2% so far in 2026 (doc 11 §2) |
+| Predicted funding, HL vs CEX (P1 capture, P2 display) | HL's free `predictedFundings` gives the next rate on HL, Binance and Bybit side by side | Shows when HL's crowd differs from the CEX crowd (HL-054) |
+| Mark price (P1) | The price HL uses for stops, liquidations and unrealized P&L: a median of oracle-plus-premium, HL's own book and CEX perp prices | Not the last trade. In fast markets mark and mid can differ; see "mark vs mid" below |
+| Oracle price (P1) | A weighted median of CEX spot prices (Binance weight 3; OKX, Bybit 2 each; Kraken, KuCoin, Gate, MEXC and HL itself 1 each), published by validators about every 3 s | The funding basis and the reference for HL's "too far from oracle" order rejection |
+| Open interest (OI) | Total open contracts | The Binance API keeps only 30 days ([docs](https://developers.binance.com/docs/derivatives/coin-margined-futures/market-data/Top-Trader-Long-Short-Ratio)); daily archives exist on data.binance.vision ([issue](https://github.com/binance/binance-public-data/issues/211)). Venues count OI differently: one side of each contract, or both sides. HL's convention is **unverified**, so every OI series carries a convention label (MA-030) |
 | Basis | Futures premium over spot, annualized | Quarterly futures roll over |
-| Liquidations | Forced closures that amplify moves | Binance pushes at most one per symbol per second, so it **undercounts** ([docs](https://developers.binance.com/docs/derivatives/usds-margined-futures/websocket-market-streams/Liquidation-Order-Streams)). Use as a relative gauge only |
+| Liquidations | Forced closures that amplify moves | Binance pushes at most one per symbol per second, so it **undercounts** ([docs](https://developers.binance.com/docs/derivatives/usds-margined-futures/websocket-market-streams/Liquidation-Order-Streams)). Use as a relative gauge only. On HL every fill is on-chain, so liquidations and auto-deleveraging (ADL) can be counted from public fills (P2, MA-031) |
 | Long/short ratios | Share of *accounts* net long | Definitions differ by venue. Every contract has both a long and a short side |
 | Options (P4, Could): DVOL term structure, 25-delta skew, put/call | Demand for downside vs upside protection | "Max pain" is Weak |
 
-Ubik presents funding and OI mainly as **leverage and crowding-risk gauges**. As a contrarian *direction* signal they are Mixed.
+Ubik presents funding and OI mainly as **leverage and crowding-risk gauges**. As a contrarian *direction* signal they are Mixed. For an open HL perp position, funding is also shown as a **cost (or income) in the position's own terms**: accrued funding and its annual rate, beside the liquidation price (HL-005).
 
-Free aggregated history: [Coinalyze](https://dlthub.com/context/source/coinalyze) (free key, ~40 calls/min). [CoinGlass](https://coinglass.com/pricing) has no free API; it starts at $29/month for personal use.
+Free aggregated history: [Coinalyze](https://dlthub.com/context/source/coinalyze) (free key, ~40 calls/min). [CoinGlass](https://coinglass.com/pricing) has no free API; it starts at $29/month for personal use. For HL itself, full hourly funding history is free from the public API (from 2023-05-12), and mark/oracle history comes from Ubik's recorder plus the optional official archive (HL-033, HL-039).
 
-**Jurisdiction flag:** Binance.com rejects requests from US IP addresses (HTTP 451, "restricted location"), and several derivatives venues restrict some countries. Source selection depends on the owner's country (docs 06/08). Ubik must never suggest bypassing geo-blocks.
+**Why the oracle matters to a beginner.** HL does not invent its own reference price. The oracle is essentially "what the big exchanges' spot markets say", with Binance weighted most. So HL perps follow CEX spot closely in calm markets (closes agree within a few basis points, doc 11 §6.2), and Binance history is a reasonable proxy for HL closes. Crash *wicks* are different: HL's own book can wick deeper (on 10 Oct 2025 HL spot UBTC fell 6–8% further than Coinbase BTC), which is why proxy history carries a wick warning (HL-035).
+
+**Mark vs mid: what drives stops.** HL triggers stops and liquidations on the **mark** price, not the last trade or mid (HL-037). Indicators and conditions that place or move a stop on an HL perp (ATR stops, Donchian exits, trailing stops) are therefore computed on the **mark-price series** where it exists. Where a rule must use last or mid price, Ubik models and shows the **mark–mid gap** so the owner knows the stop may fire at a different moment than the chart suggests (MA-029).
+
+**Hyperliquid symbols.** HL perps are addressed by their index in the venue's metadata (BTC = 0); spot pairs by `10000 + index`, displayed as `@142`-style names. HL spot "BTC" is really **UBTC**, a bridged token (doc 11 §2). **Testnet asset ids differ from mainnet.** Ubik keys every series on (network, asset id) from effective-dated registry snapshots (HL-040) and shows friendly aliases such as "BTC perp" and "BTC spot (UBTC, bridged)". Analysis never joins testnet and mainnet data.
+
+**Builder-deployed (HIP-3) markets.** HIP-3 equity, commodity and index perps may appear in P2 as read-only, labelled "24/7 macro context" cards in Pro mode, hidden in Guided mode, and never tradable before a separate review (HL-009, D-54).
+
+**Jurisdiction flag:** Binance.com rejects requests from US IP addresses (HTTP 451, "restricted location"), and several derivatives venues restrict some countries. Hyperliquid's Terms prohibit "Restricted Persons" (US or Ontario residence or location, sanctioned territories); live trading on HL cannot be armed for them (HL-045, D-53). Source selection depends on the owner's country (docs 06/08). Ubik must never suggest bypassing geo-blocks.
 
 ### 3.7 On-chain (P2; BTC and ETH first)
 
@@ -319,8 +345,8 @@ Uses:
 | MA-008 | Ubik shall compute breadth over a configurable top-N universe using point-in-time membership. | Should | P2 | |
 | MA-009 | Ubik shall monitor spread and top-of-book depth per traded pair and flag deterioration. | Should | P1 | |
 | MA-010 | Ubik shall compute depth bands and an order-size slippage estimate, plus CVD and OFI labelled "Descriptive / short-horizon". | Should | P2 | Shared with doc 05 TCA. |
-| MA-011 | Ubik shall record funding (predicted and settled), OI and long/short ratios for BTC/ETH/SOL perps on at least one venue, starting in P1. | Should | P1 | Free history is short. |
-| MA-012 | Ubik shall display funding, OI, basis and liquidations, each with its caveat text. Options data follows in P4 (Could). | Should | P2 | |
+| MA-011 | Ubik shall record funding (predicted and settled), OI and long/short ratios for BTC/ETH/SOL perps on at least one venue, starting in P1. | Should | P1 | Free history is short. On HL this is part of the Must recorder (HL-032, MA-028); Binance is the CEX venue (HL-053). |
+| MA-012 | Ubik shall display funding, OI, basis and liquidations, each with its caveat text. Options data follows in P4 (Could). | Should | P2 | Includes HL vs Binance basis and funding (HL-054). |
 | MA-013 | Ubik shall ingest the free on-chain set (§3.7) for BTC/ETH, recording each source's license and attribution. Paid metrics shall be pluggable by configuration, preferring point-in-time variants. | Should | P2 | |
 | MA-014 | Ubik shall ingest Fear & Greed daily and display its attribution next to the value. | Should | P2 | |
 | MA-015 | Ubik shall ingest headlines and exchange announcements, deduplicate them, tag asset and event type, and store `published_at` and `ingested_at`. | Should | P2 | |

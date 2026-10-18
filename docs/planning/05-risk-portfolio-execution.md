@@ -10,6 +10,7 @@
 - **The exchange and the stablecoin are risks, not "the bank" and "cash."** Value everything in USD (or the owner's fiat), cap the capital on each exchange, and watch stablecoin pegs. Precedents: USDC hit $0.87 in 2023, USDe hit about $0.65 on Binance in October 2025, and Bitget froze withdrawals after a hack in September 2026.
 - **A professional-grade OMS from day one.** That means event-sourced orders, deterministic client order IDs, an explicit UNKNOWN order state, continuous reconciliation, exact-decimal double-entry accounting, and real exchange precision and fee rules in every mode.
 - **Measure real trading costs and go live in stages.** Transaction cost analysis (TCA) on every paper and live fill shows assumed vs observed costs from P1 and, from P2, calibrates backtest cost assumptions. The route to real money is paper → exchange demo → shadow → tiny-capital pilot → scaled, with written promotion and demotion rules.
+- **Hyperliquid is the primary venue (doc 11, D-45); Binance is secondary.** That changes some details here, not the pipeline. "Spot only" becomes **"no leverage until P4"**: effective leverage stays at or below 1×, on Hyperliquid spot or a **1× isolated perp** pinned and checked at every reconciliation, with funding in P&L and the liquidation price always shown. **Shorts** at 1× are allowed in **paper from P1** and in **live only after the owner's first long/flat strategy has completed the S4 pilot**; leverage above 1× waits for P4 (D-46 as amended by the lead; §5.1). Hyperliquid also brings its own order-type mapping, an UNKNOWN-order protocol (D-49), an address-based rate budget (D-50), a local watchdog as dead-man's switch, and an adapted path to live (D-51).
 
 ---
 
@@ -22,6 +23,7 @@ This doc covers everything between "a strategy wants to trade" and "the trade is
 - **07:** screens and wording.
 - **08:** API-key security, authentication and tax exports.
 - **02:** build-vs-reuse. My input there: own the risk engine, OMS and ledger, because they are the safety surface, and reuse exchange plumbing (CCXT or native SDKs).
+- **11:** everything specific to Hyperliquid, the primary venue. This doc cites its requirement IDs (HL-xxx) and decisions (D-45…D-55) instead of repeating them; where the two differ on Hyperliquid, doc 11 and doc 10's decisions win.
 
 **What professional firms do.** US brokers must run automated *pre-trade* checks before an order reaches a market: capital thresholds and "erroneous order" filters, under SEC Rule 15c3-5. The cautionary tale is Knight Capital. In 2012 a botched deployment sent more than 4 million unintended orders in 45 minutes, for a loss of about $460M (per the SEC). The SEC [order](https://www.sec.gov/litigation/admin/2013/34-70694.pdf) cites missing automated controls and kill-switch procedures. Firms also keep the risk function independent of the traders, monitor exposure in real time, reconcile with their brokers every day, and measure execution quality. Ubik copies these practices at individual scale. Open-source precedents include [NautilusTrader's RiskEngine](https://nautilustrader.io/docs/latest/api_reference/risk), with ACTIVE/REDUCING/HALTED states, per-instrument notional caps and an `OrderDenied` event, and [Freqtrade's protections](https://www.freqtrade.io/en/stable/plugins/), such as StoplossGuard, MaxDrawdown and CooldownPeriod.
 
@@ -35,6 +37,9 @@ This doc covers everything between "a strategy wants to trade" and "the trade is
 - **ATR (Average True Range):** the average size of a bar's price range, a simple volatility gauge.
 - **Maker / taker:** a maker order rests in the order book, usually at a cheaper fee. A taker order executes immediately.
 - **Slippage:** the gap between the expected price and the price actually received.
+- **Perp (perpetual future):** a contract that tracks a coin's price without expiry. You don't own the coin; you hold a position that gains or loses with the price (doc 11 §2).
+- **Effective leverage:** position value at the mark price ÷ the money backing it (its isolated margin). At 1.0× the position is no bigger than the money behind it, so it behaves like owning the coin.
+- **Short:** a position that profits when the price falls. Losses grow as the price rises, with no natural ceiling unless sized and stopped.
 
 ---
 
@@ -85,8 +90,10 @@ How the pipeline is enforced:
 | Cluster | Coins that move together count as one bet | "Crypto majors" ≤ 75% of equity |
 | Account | Daily / weekly loss | 3% / 7% → REDUCE_ONLY and cancel resting entry orders until the period resets |
 | Account | Drawdown breaker | 15% → REDUCE_ONLY and cancel resting entry orders; 20% → HALTED with review |
-| Account | Leverage, negative balances | Not allowed (spot only, hard ceiling) |
-| Exchange | Capital held on the exchange | Owner-set USD cap (live) |
+| Account | Leverage, negative balances | Effective leverage ≤ 1.0× (hard ceiling until P4); no negative balances or borrowing. Hyperliquid perps only as 1× isolated (§5.1) |
+| Account | Shorts | Paper: allowed at ≤ 1× on Hyperliquid perps, stop mandatory. Live: denied until the first long/flat strategy completes S4 (RK-035) |
+| Exchange | Capital held on the exchange | Owner-set USD cap (live). On Hyperliquid it includes HYPE (RK-032, HL-047) |
+| Exchange | Bridged spot tokens (UBTC, UETH, USOL) | ≤ 50% of account equity (RK-045) |
 | System | Stale data (§4.4) / clock drift / stablecoin peg | 10 s / 1,000 ms / 1% for 5 min |
 
 Crypto trades 24/7, so "daily" resets at 00:00 UTC unless the owner picks a local timezone. Loss limits use **marked-to-market** equity, meaning open positions are valued at current prices, so a large open loss counts. Cancelling resting entry orders never touches protective stops and exits: they keep resting.
@@ -162,6 +169,12 @@ A **stop-loss** exits when price moves against you by a set amount. A **take-pro
 
 **Recommendation: hybrid.** Ubik manages the precise stop. In live mode it also rests a wider native **"catastrophe stop"** (about 1.5× the distance) so positions survive a Ubik outage. Backtest and paper simulate both. Prefer stop-market for protective exits. Where only stop-limit exists, as on Coinbase spot, set a wide limit offset, because a stop that doesn't fill protects nothing. Over $19B of leveraged positions were liquidated in about a day on [10 Oct 2025](https://www.coingecko.com/learn/october-10-crypto-crash-explained), and order books thinned dramatically.
 
+**On Hyperliquid** (doc 11 §4.6, HL-019):
+- A native catastrophe stop is a **reduce-only trigger order**, so it can only shrink the position, never open or flip one.
+- It triggers on the **mark price**, not the last trade, so backtests and paper simulate stops on a mark-price path (HL-037).
+- A "market" trigger fills with up to **10% slippage**. Ubik prefers a **stop-limit trigger with an explicit limit** (for example 3% beyond the trigger), which caps the damage but still fills in all but the most extreme gaps.
+- **Every stop is publicly visible** on-chain (doc 11 §8.3). Ubik keeps the precise stop bot-managed (invisible) and keeps the native catastrophe stop wide (the 1.5× default), since outage protection matters more than hiding it.
+
 ### 4.2 Breakers and cooldowns
 
 Loss limits, drawdown breakers, cooldowns, maximum positions and concentration caps use the defaults in §2.1. Breakers have **hysteresis** so they don't flap on and off around the threshold. A drawdown HALT stays until a human re-arms it with a note, for example "reviewed; reducing size." Daily and weekly REDUCE_ONLY states clear automatically when the period rolls over.
@@ -178,6 +191,8 @@ From P2 a strategy can also opt into an **event guardrail** (RK-041): around hig
 
 L2 is what 08 SEC-005 and 02 CAP-017 describe. Loss limits and drawdown breakers set trading states (§2.1); they are not kill-switch levels. The kill switch is reachable from the web UI, the host CLI and an authenticated API (08), and it runs with priority over strategy evaluation. Re-arming is manual. In live mode (P3) a **dead-man's switch** cancels resting entry orders if the engine's heartbeat stops (RK-025). Kraken offers this natively as [`cancel_all_orders_after`](https://docs.kraken.com/api-reference/order-management/dead-mans-switch) (refresh every 15–30 s with a 60 s timeout). Where a venue has no native mechanism, a local **watchdog** process does the cancel. Both differ from the **external heartbeat monitor** (§9.2), an off-host service that only alerts the owner.
 
+**On Hyperliquid the local watchdog is the dead-man's switch** (D-51, HL-023). The native `scheduleCancel` may be locked until an account has traded $1M (unverified), allows only 10 fires a day, and might also cancel resting catastrophe stops (unverified). Ubik adds it later, refreshed every 60 s, only once the account has it **and** a testnet test shows it leaves trigger orders alone. Until P4 every position is at most 1×, so an outage cannot liquidate it; the remaining risk is an unmanaged position, which the resting catastrophe stop covers.
+
 ### 4.4 Stale data and clock drift
 
 BTC/ETH data on major exchanges updates many times per second, so silence is a signal. **Stale** is a data-health flag on a symbol, venue or feed, not a trading state: there are still only three trading states (RK-004). This table is the single source for stale-data handling; docs 04, 06 and 07 refer to it.
@@ -193,16 +208,16 @@ Exchanges reject signed requests with skewed timestamps; Binance checks `recvWin
 
 | ID | Requirement | Priority | Phase | Rationale / notes |
 |---|---|---|---|---|
-| RK-016 | Every entry shall carry a defined protective exit. The Careful and Balanced profiles shall forbid strategies without stops; the Adventurous profile shall allow them only with an explicit, logged acknowledgement. | Must | P1 | Same in Guided and Pro mode. Allocation-style templates (DCA, rebalancing) rely on the drawdown breaker plus a worst-case display instead (§2.1). |
+| RK-016 | Every entry shall carry a defined protective exit. The Careful and Balanced profiles shall forbid strategies without stops; the Adventurous profile shall allow them only with an explicit, logged acknowledgement. | Must | P1 | Same in Guided and Pro mode. Allocation-style templates (DCA, rebalancing) rely on the drawdown breaker plus a worst-case display instead (§2.1). The Adventurous exemption never applies to shorts (RK-042). |
 | RK-017 | Ubik shall support bot-managed stop-loss, take-profit, trailing and time exits in all modes, evaluated on each price update (bars in backtest, per 04). | Must | P1 | |
-| RK-018 | In live mode Ubik shall rest a native catastrophe stop (default 1.5× the bot-stop distance) where the venue supports one. Paper and backtest shall simulate it. | Should | P3 | Designed in P1. |
+| RK-018 | In live mode Ubik shall rest a native catastrophe stop (default 1.5× the bot-stop distance) where the venue supports one. Paper and backtest shall simulate it. | Should | P3 | Designed in P1. On Hyperliquid: a reduce-only trigger order on mark, stop-limit with an explicit limit preferred over the 10%-slippage market trigger, kept wide because it is public (§4.1, HL-019). |
 | RK-019 | Ubik shall enforce daily loss limits at strategy and account scope, and weekly loss limits at account scope, on marked-to-market equity. A breach shall set REDUCE_ONLY on that scope and cancel its resting entry orders until the period resets; protective stops and exits keep resting. | Must | P1 | §2.1 defaults. |
 | RK-020 | Ubik shall enforce strategy and account drawdown breakers per §2.1: a strategy is HALTED at the smaller of 20% and 1.5 × its reference drawdown; an account goes REDUCE_ONLY at 15% and HALTED at 20%. The owner's questionnaire answer (07 §2.2, Q5) or a per-strategy setting may only lower the 20% cap. Clearing a HALT requires a manual re-arm with a note. | Must | P1 | The strategy breaker is the default kill criterion (02 CAP-033). |
 | RK-021 | Ubik shall enforce re-entry cooldowns after stop-outs and pauses after consecutive losses (defaults §2.1). | Should | P1 | |
 | RK-022 | Ubik shall enforce max open positions (3 per strategy, 6 per account) and the per-asset and cluster caps in §2.1. | Must | P1 | |
 | RK-023 | Ubik shall provide kill-switch levels L1–L3 (§4.3), reachable from the web UI, CLI and authenticated API, and running with priority over strategy evaluation. L1 shall take ≤ 1 click/tap with no confirmation; L2 ≤ 2 clicks/taps with no confirmation, completing within 10 s; L3 ≤ 2 clicks/taps plus an explicit confirmation, starting within 10 s. | Must | P1 | Works in paper from day one, including L3. |
 | RK-024 | After L2/L3, Ubik shall verify open orders = 0 and positions are within dust tolerance (leftovers below the minimum order size), report the result, and alert on failure (Critical in live, Warning in paper; 07 §8). | Must | P1 | |
-| RK-025 | In live mode Ubik shall cancel resting entry orders when its heartbeat is missing for > 60 s, using native cancel-after where available, else a local watchdog process. | Should | P3 | Dead-man's switch. Not the external heartbeat monitor (06 AR-032), which only alerts. |
+| RK-025 | In live mode Ubik shall cancel resting entry orders when its heartbeat is missing for > 60 s, using native cancel-after where available, else a local watchdog process. | Should | P3 | Dead-man's switch. Not the external heartbeat monitor (06 AR-032), which only alerts. On Hyperliquid the local watchdog is primary; native `scheduleCancel` only after the volume unlock and the trigger-order test (§4.3, HL-023). |
 | RK-026 | Ubik shall handle stale data per the §4.4 table: on a stale symbol (> 10 s without trades or quotes, a book-sequence gap, or a missing 1m bar) deny new entries, always pass cancels, and allow exits only as protected orders priced from a fresh reference; set the venue REDUCE_ONLY after > 30 s of venue-wide staleness; and alert externally after 2 min of staleness while bots are running or positions are open. | Must | P1 | Thresholds configurable per pair. "Stale" is a data-health flag, not a trading state. |
 | RK-027 | Ubik shall measure clock offset to each venue every 60 s, warn above 500 ms, and deny new orders above 1,000 ms. | Must | P1 | Host-vs-exchange offset. NTP required; the host-vs-NTP limit is 06 NFR-013. |
 | RK-041 | Ubik shall offer an optional per-strategy event guardrail: within a configurable window around high-importance events in the MA-019 calendar (default 2 h before to 1 h after), it shall either set the strategy REDUCE_ONLY or scale new entries by a configurable factor (default 0.5). Backtests shall apply it point-in-time, counting an event only from its `announced_at` (doc 03). | Could | P2 | Off by default. Doc 03 §3.9 refers to it. |
@@ -224,8 +239,36 @@ These can lose money even when the strategy is right.
 | Rate-limit bans | Binance answers repeated 429s with IP bans (HTTP 418) lasting "2 minutes to 3 days" | Client-side limiter; venue HALTED on a ban |
 | API churn | Binance removed listenKey user streams (2026-02-20) and retired v1 endpoints (2026-03-25) ([changelog](https://developers.binance.com/docs/binance-spot-api-docs/CHANGELOG)) | Adapter contract tests and changelog watch (06) |
 | Runaway software | Knight Capital, 2012 | Order-rate, turnover and duplicate guards; kill switch; staged rollout |
+| On-chain venue: governance and forced settlement | Hyperliquid validators delisted and force-settled the JELLY market at a chosen price (Mar 2025) | Allow-listed majors only (HL-007); delisting settlement booked as a venue-initiated event and alerted (HL-048) |
+| On-chain venue: API down while the chain runs | Hyperliquid API outage of 37 min on 29 Jul 2025; refunds were discretionary | Positions ≤ 1× survive unattended; resting catastrophe stops; venue REDUCE_ONLY on errors or `exchangeStatus` (RK-033/034) |
+| Auto-deleveraging (ADL) | Hyperliquid's first cross-margin ADL, 10 Oct 2025: winning positions closed without being asked | Booked as a venue-initiated fill, alert, bot re-plans (HL-048); ADL scenario in stress tests (HL-038) |
+| Bridge custody | Hyperliquid spot "BTC" is UBTC, an IOU from the Unit bridge (2-of-3 signers); the USDC bridge was emergency-locked for about 1 h (Nov 2025) | BTC/ETH default to the 1× perp, not bridged spot (D-46); bridged-token cap (RK-045); USDC peg monitoring (RK-029) |
+| Validator concentration | On 2026-10-18 the Hyper Foundation's five validators held about 47% of stake; the top 3 can halt the chain | Venue concentration cap including HYPE (RK-032, HL-047); sweep profits out by hand |
+| Address rate budget exhausted | Hyperliquid throttles an address to 1 action per 10 s once its budget is used up | Reserved exit share and churn refusal (EX-006, D-50) |
+| Public account | Anyone can see a Hyperliquid account's positions, stops and balances | Disclosure (HL-049); precise stops bot-managed, native stops wide (§4.1) |
 
-**Leverage (P4 only).** With leverage you borrow to hold a bigger position. If losses push your collateral below the "maintenance margin," the exchange **liquidates**: it force-closes the position at market, usually at the worst moment. Perpetual futures also charge or pay **funding** every few hours, and in extreme events exchanges may **auto-deleverage (ADL)** profitable traders. On 10 Oct 2025, exchange-internal collateral pricing amplified the liquidation cascade.
+**Counterparty risk on Hyperliquid.** Funds sit in the owner's own wallet on Hyperliquid's chain, not with a company, but that is not "no counterparty": the trading state depends on the validators, the API servers run by the Hyperliquid team, the USDC issuer (Circle) and, for spot BTC/ETH/SOL, the Unit bridge. Refunds after past incidents were discretionary, and there is no investor-protection scheme. Ubik treats Hyperliquid like any exchange for concentration purposes: a capped amount, profits swept out by the owner, never all the owner's crypto (doc 11 §8.2).
+
+**Leverage (P4 only).** With leverage you borrow to hold a bigger position. If losses push your collateral below the "maintenance margin," the exchange **liquidates**: it force-closes the position at market, usually at the worst moment. Perpetual futures also charge or pay **funding** every few hours (hourly on Hyperliquid), and in extreme events exchanges may **auto-deleverage (ADL)** profitable traders. On 10 Oct 2025, exchange-internal collateral pricing amplified the liquidation cascade.
+
+### 5.1 Perps without leverage, and shorts (Hyperliquid)
+
+Hyperliquid's liquidity is in perps, so the old rule "spot only until P4" becomes **"no leverage until P4"** (D-46, as amended by the lead). What stays forbidden before P4 is what makes a position dangerous for a beginner: losing more than the money put in, or being forced out by liquidation.
+
+**How a 1× position stays safe.**
+- **Isolated margin, pinned at 1×.** Each perp position has its own pot of money and can lose at most that pot. Ubik sets leverage to 1× isolated before the first order on each asset and checks it at every reconciliation; a mismatch sets REDUCE_ONLY and raises a Critical alert in live (HL-003).
+- **Effective leverage ≤ 1.0×.** Hourly funding is paid out of the isolated margin, so the position slowly becomes slightly leveraged. Above 1.05× Ubik tops up the margin from the sleeve or trims the position (HL-004).
+- **Liquidation price always shown.** For a 1× long it starts near zero and creeps up only through funding. Every perp position shows its liquidation price, the distance to it, accrued funding and funding as a yearly rate, in every mode (HL-005).
+- **Funding counts as P&L.** Funding paid or received is part of each sleeve's P&L and of loss limits (RK-043).
+- **Vehicle choice.** A long can be held as Hyperliquid spot or as a 1× isolated perp. BTC/ETH default to the perp, HYPE to spot, and the owner sees a cost and custody comparison before deploying (HL-006).
+
+**Shorts, in two steps.** The owner wants to trade both directions on short timeframes (5m–1h, starting at 1h). Shorting is where beginners get hurt, because a rising price has no ceiling. So:
+- **Paper, from P1:** shorts are allowed at ≤ 1× effective leverage, only through 1× isolated Hyperliquid perps (Hyperliquid spot stays long/flat), with a mandatory stop. No money is at risk, and the owner learns how shorts behave, including funding and liquidation.
+- **Live, from P3:** long/flat first. Live shorts unlock only after the owner's **first long/flat strategy has completed S4** (the pilot) without Critical incidents, and only under the Balanced or Adventurous profile. Each short strategy still goes through every stage itself.
+- **A 1× short can be liquidated.** Its liquidation price sits roughly at double the entry price minus the maintenance margin, and funding moves it closer. That is far away, but not "never", so a short always needs its stop and its liquidation distance is watched (RK-044).
+- **P4:** leverage above 1× only under the Adventurous profile, isolated margin, 2× default and 3× hard ceiling (RK-036). Nothing above 3× by default, ever.
+
+In one line, D-06 now reads: *"No leverage until P4; shorting at ≤ 1× in paper from P1 and in live from P3 after the first S4 completes."*
 
 | ID | Requirement | Priority | Phase | Rationale / notes |
 |---|---|---|---|---|
@@ -233,11 +276,15 @@ These can lose money even when the strategy is right.
 | RK-029 | Ubik shall monitor held stablecoins against ≥ 2 reference sources: warn at > 0.5% deviation; at > 1% for 5 min, set REDUCE_ONLY on pairs quoted in that coin and alert. | Should | P1 | Must by P3. |
 | RK-030 | Ubik shall cap the share of equity in any single stablecoin (default 60%) and warn when it is exceeded. | Should | P2 | |
 | RK-031 | Ubik shall limit the trading universe to pairs above a minimum 24h volume (default $50M), and deny or split orders larger than 10% of visible depth within 0.5% of mid. | Must | P1 | |
-| RK-032 | Ubik shall track USD value per exchange against an owner-set cap and alert when it is exceeded, suggesting a manual withdrawal. Ubik never withdraws. | Must | P3 | The FTX and Bitget lesson. |
+| RK-032 | Ubik shall track USD value per exchange against an owner-set cap and alert when it is exceeded, suggesting a manual withdrawal. Ubik never withdraws. | Must | P3 | The FTX and Bitget lesson. On Hyperliquid the cap covers everything in the trading account, including HYPE, whose value is tied to the venue (HL-047; default per Q-HL-07: sum of pilot allocations + 20%). |
 | RK-033 | Ubik shall set a venue to HALTED when its error/reject rate exceeds a threshold (default 20% over 5 min) or on an IP ban, and alert. | Must | P3 | Exercised in P1 via fault injection (EX-021). |
-| RK-034 | Ubik shall consume venue status and maintenance notices and set the venue REDUCE_ONLY during announced maintenance. | Should | P3 | |
-| RK-035 | Ubik shall deny orders that would make a spot balance negative or require margin, borrowing or leverage until P4 is explicitly enabled. | Must | P1 | Hard ceiling. |
-| RK-036 | P4 derivatives shall enforce max leverage (default 2×), isolated margin, a liquidation distance ≥ 3× daily ATR, and funding accrual in P&L, and shall include liquidation and ADL in stress tests. | Must | P4 | |
+| RK-034 | Ubik shall consume venue status and maintenance notices and set the venue REDUCE_ONLY during announced maintenance. | Should | P3 | On Hyperliquid: `exchangeStatus`, network-upgrade post-only periods (IOC and market orders don't fill) and the Telegram API channel (HL-052). |
+| RK-035 | Ubik shall reject intents that would create leverage above 1× (effective) before P4, and shall reject live short intents until the first long/flat strategy has completed S4; paper shorts at ≤ 1× are allowed from P1. It shall also deny orders that would make a spot balance negative or require borrowing. | Must | P1 | Hard ceiling. Replaces "spot only" (D-46 as amended by the lead; §5.1). Shorts only through 1× isolated Hyperliquid perps; Hyperliquid spot is long/flat. Same wording as doc 11 HL-002 and doc 04 ST-010. |
+| RK-036 | P4 derivatives shall enforce max leverage (default 2×, hard ceiling 3× on Hyperliquid BTC/ETH perps, lower for others), only under the Adventurous profile, isolated margin, a liquidation distance ≥ 3× daily ATR, and funding accrual in P&L, and shall include liquidation and ADL in stress tests. | Must | P4 | Needs the derivatives Learn module and the CMP-010 review first (HL-008). Nothing above 3× by default, ever. |
+| RK-042 | Every short shall carry a stop in every risk profile (the Adventurous no-stop exemption never applies) and be held only as a 1× isolated perp within RK-035's limits. Live shorts additionally require the Balanced or Adventurous profile and the S4 unlock in RK-035; before the first short, Ubik shall show a plain-language explanation of short risk (losses grow as price rises, funding, liquidation price). | Must | P1 (paper) / P3 (live) | Lead amendment to D-46. The owner wants two-way trading and needs to learn shorting safely in paper first. |
+| RK-043 | Funding paid or received on perp positions shall be booked to the sleeve's P&L in every mode (simulated hourly in backtest and paper, actual in live) and shall count toward loss limits, drawdown breakers and TCA. | Must | P1 | A long perp pays funding most of the time (BTC averaged 24% a year in 2024). Persistence and export: HL-050. |
+| RK-044 | Ubik shall watch each perp position's distance to its liquidation price and raise a Warning (Critical in live) when it falls below 3× daily ATR, then top up margin or reduce the position per HL-004. | Should | P1 (sim) / P3 | Matters for shorts and for P4; at 1× long it should never fire. Display: HL-005. |
+| RK-045 | Ubik shall cap the combined value of bridged spot tokens held on a venue (on Hyperliquid: UBTC, UETH, USOL; default 50% of account equity) and warn above 40%. | Should | P1 | Bridge custody is a total-loss risk a 1× perp doesn't carry (doc 11 §3.2, HR8). |
 
 ---
 
