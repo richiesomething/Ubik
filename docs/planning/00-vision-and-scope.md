@@ -1,6 +1,6 @@
 # Ubik — Vision & Scope
 
-> Status: **Draft v0.2** (initial planning, 2026-10-18; updated after the cross-doc consistency review). Nothing has been built yet. This document frames every other planning doc in this folder; when they disagree, this one wins until a decision in [10-decisions-and-open-questions.md](10-decisions-and-open-questions.md) changes it.
+> Status: **Draft v0.3** (initial planning, 2026-10-18; updated after the cross-doc consistency review and the switch to Hyperliquid as primary venue). Nothing has been built yet. This document frames every other planning doc in this folder; when they disagree, this one wins until a decision in [10-decisions-and-open-questions.md](10-decisions-and-open-questions.md) changes it.
 
 ## Summary
 
@@ -37,7 +37,7 @@ These are ordered. When two conflict, the higher one wins.
 
 | # | Principle | What it means in practice |
 |---|---|---|
-| 1 | **Safety before features** | Risk limits, kill switch, and stale-data halts are on by default and can't be bypassed by strategies. Live trading (later) needs explicit opt-in, re-authentication, and passing graduation criteria. API keys never have withdrawal permission. |
+| 1 | **Safety before features** | Risk limits, kill switch, and stale-data halts are on by default and can't be bypassed by strategies. Live trading (later) needs explicit opt-in, re-authentication, and passing graduation criteria. Exchange keys never have withdrawal permission; on Hyperliquid, Ubik holds only an agent (API) wallet key that can trade but not withdraw, and your master wallet key never touches the server. |
 | 2 | **Honest by default** | Never present a backtest without costs, a benchmark, and its out-of-sample result. Flag likely overfitting. No promises, hype, or gamification that encourages overtrading. Paper and live are visually unmistakable. |
 | 3 | **Sim-live parity** | One strategy codebase, one risk engine, and one order model across backtest, paper, and live. Only the clock, data feed, and exchange adapter change between modes. |
 | 4 | **Explain everything** | Every metric, indicator, signal, warning, and blocked trade has a "what does this mean?" explanation. |
@@ -66,7 +66,7 @@ These are ordered. When two conflict, the higher one wins.
 - **Managing other people's money, or selling signals and copy-trading**, at least until a legal review (see the security & compliance doc). That changes the regulatory picture entirely.
 - **Guaranteed returns or "set and forget" marketing.** Ubik is a tool for disciplined experimentation, not a money printer.
 - **Native mobile apps.** The web UI must be usable on mobile (an installable web app). Alerts reach you through an external channel such as Telegram, email or ntfy from P1; web push comes in P2.
-- **DeFi/DEX trading and leverage in P1–P3.** Leveraged derivatives are P4, behind extra safeguards.
+- **Leverage and general DeFi in P1–P3.** Hyperliquid's on-chain order book is in scope (paper from P1, live from P3), but only at ≤ 1× effective leverage. Shorting at 1× is allowed in paper from P1 and in live only after your first long/flat strategy completes the pilot stage. Leverage above 1× is P4 (2× default, 3× hard ceiling); vaults, staking, long-tail tokens and builder-deployed markets are out of scope ([11](11-hyperliquid-integration.md)).
 
 ## 5. Users
 
@@ -82,10 +82,10 @@ Ubik is **single-user and self-hosted first**. The architecture keeps a path to 
 
 | Phase | Name | Scope (headline) | Real money? |
 |---|---|---|---|
-| **P1** | MVP "Paper Trader" | Market data for a few major spot pairs on the 1–2 exchanges of your jurisdiction profile; charting and core indicators; watchlist and basic alerts; template and rule-based strategies; realistic event-driven backtester; paper trading with simulated balances; the full strategy → risk → order-management pipeline with kill switch; beginner onboarding, explanations, and glossary | No |
+| **P1** | MVP "Paper Trader" | Market data for a few major markets on **Hyperliquid (primary)** — spot and 1× perps, with funding and mark prices — plus Binance as the secondary data source and proxy history; charting and core indicators; watchlist and basic alerts; template and rule-based strategies; realistic event-driven backtester; paper trading with simulated balances; the full strategy → risk → order-management pipeline with kill switch; beginner onboarding, explanations, and glossary | No |
 | **P2** | "Analyst" | Market regimes, volatility, correlations, derivatives, on-chain and sentiment analysis; full scanner and advanced alerts; walk-forward optimization with overfitting statistics; portfolio allocation methods and portfolio-level risk; AI assistant; sandboxed Python strategies; richer reports and journal | No |
 | **P3** | "Live" | Real exchange trading with staged rollout (exchange demo, read-only shadow, tiny-capital pilot, then scaled), graduation criteria, hardened security, reconciliation with the exchange, monitoring and alerting, incident runbooks, tax exports | **Yes, small and staged** |
-| **P4** | "Advanced" | Derivatives and leverage (with extra guardrails), ML-assisted strategies, multi-exchange execution, market making, possibly multi-user | Yes |
+| **P4** | "Advanced" | Leverage above 1× on Hyperliquid perps (2× default, 3× hard ceiling, extra guardrails), ML-assisted strategies, multi-exchange execution, market making, possibly multi-user | Yes |
 
 [09-roadmap.md](09-roadmap.md) breaks these into milestones with exit criteria.
 
@@ -94,11 +94,11 @@ Ubik is **single-user and self-hosted first**. The architecture keeps a path to 
 | Item | Assumption | Validated in |
 |---|---|---|
 | Users | Single owner, self-hosted (home machine or small VPS) | Decisions log |
-| Markets | Spot crypto on major centralized exchanges; BTC, ETH, SOL and similar liquid pairs first | [06](06-data-and-architecture.md) |
+| Markets | **Hyperliquid** (owner directive, 2026-10-18): BTC, ETH, SOL as 1× isolated perps and HYPE (and wrapped BTC/ETH/SOL) as spot first; Binance secondary. Strategy timeframes 5m–1h, starting at 1h | [11](11-hyperliquid-integration.md), [06](06-data-and-architecture.md) |
 | Data | Live market data even in paper mode; free or low-cost sources first | [06](06-data-and-architecture.md) |
 | Stack | Python 3.13 engine (polars, TA-Lib); TypeScript/React web UI; PostgreSQL + TimescaleDB as the system of record plus a Parquet/DuckDB data lake (confirmed in 06; see decisions D-02–D-15) | [06](06-data-and-architecture.md), [10](10-decisions-and-open-questions.md) |
 | AI | Claude-powered assistant for explanations and strategy drafting; never holds secrets or places trades without confirmation | [07](07-ux-and-beginner-experience.md), [08](08-security-legal-compliance.md) |
-| Jurisdiction | **Unknown.** It affects exchange choice, regulation, and tax | [10](10-decisions-and-open-questions.md) |
+| Jurisdiction | Colombian citizen, assumed resident in Colombia (to confirm). Hyperliquid live trading requires passing its Restricted-Person check (no US/Ontario residence or location, no sanctioned-territory ties); Ubik never works around it | [10](10-decisions-and-open-questions.md), [11](11-hyperliquid-integration.md) |
 | Budget | Unknown. Planning assumes a hobby budget (tens of dollars a month for hosting and AI usage) and open-source components | [10](10-decisions-and-open-questions.md) |
 
 ## 8. Document map
@@ -116,4 +116,5 @@ Ubik is **single-user and self-hosted first**. The architecture keeps a path to 
 | [08 Security, Legal & Compliance](08-security-legal-compliance.md) | Threat model, key handling, regulation, tax, disclaimers |
 | [09 Roadmap](09-roadmap.md) | Milestones, sequencing, exit criteria |
 | [10 Decisions & Open Questions](10-decisions-and-open-questions.md) | What's decided, what the owner needs to decide |
+| [11 Hyperliquid Integration](11-hyperliquid-integration.md) | How Ubik trades on Hyperliquid, the primary venue: markets, keys, data, path to live, risks |
 | [Glossary](glossary.md) | Plain-language definitions of every term |

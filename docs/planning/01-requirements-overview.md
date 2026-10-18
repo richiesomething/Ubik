@@ -1,6 +1,6 @@
 # Ubik — Requirements Overview
 
-> Status: **Draft v0.2** (2026-10-18; updated after the cross-doc consistency review). This is the index to Ubik's requirements. The requirements themselves live in the domain docs (02–08). This doc shows how they fit together: what P1 must deliver, the rules every feature obeys, the non-functional targets, and how each part of the owner's brief is covered.
+> Status: **Draft v0.3** (2026-10-18; updated after the cross-doc consistency review). This is the index to Ubik's requirements. The requirements themselves live in the domain docs (02–08). This doc shows how they fit together: what P1 must deliver, the rules every feature obeys, the non-functional targets, and how each part of the owner's brief is covered.
 
 ## Summary
 
@@ -27,6 +27,7 @@
 | DA, AR, NFR | Data; architecture & tech stack; non-functional | [06](06-data-and-architecture.md) |
 | UX, ED | Product experience & UI; education & AI assistant | [07](07-ux-and-beginner-experience.md) |
 | SEC, CMP | Security; legal, compliance, tax & disclaimers | [08](08-security-legal-compliance.md) |
+| HL | Hyperliquid integration (primary venue) | [11](11-hyperliquid-integration.md) |
 
 **When docs overlap**, the doc that owns the topic wins (e.g. 05 owns risk limits, 04 owns fill rules, 08 owns key handling), and [10 Decisions](10-decisions-and-open-questions.md) records any conflict the planning lead resolved.
 
@@ -120,6 +121,7 @@ Owned by [06 §11](06-data-and-architecture.md) and the docs named in the last c
 
 | The owner asked for… | Where it's covered | Key requirements |
 |---|---|---|
+| "Make the bot compatible with Hyperliquid … the primary way we're going to interact with crypto" | Hyperliquid as primary venue: native client, agent-key security, data recording and proxy history, ≤ 1× positions, jurisdiction gate, path to live | HL-001–HL-054, D-45–D-55 |
 | "A crypto trading bot" | Strategy engine running 24/7 with templates, a rule builder and (P2) Python | ST-001–ST-022, AR-010 |
 | "For now we won't trade real money … later we'll make it work with real money" | Paper trading on live data with no keys (P1); sim-live parity so live is configuration, not a rewrite; staged path to live with tiny-capital pilot (P3) | PT-001–PT-016, EX-022–EX-028, SEC-007, CAP-035 |
 | "Everything trading companies do to optimize trading, e.g. market analysis and technical analysis" | Capability map §3: data, research rigor, analysis, signal combination, portfolio, risk, execution/TCA, attribution, operations, governance, treasury | CAP-*, TA-*, MA-*, SIG-*, RK-*, PF-*, EX-* |

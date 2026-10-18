@@ -1,6 +1,6 @@
 # Ubik — Roadmap
 
-> Status: **Draft v0.2** (2026-10-18; updated after the cross-doc consistency review). This turns the phases in [00 Vision & Scope](00-vision-and-scope.md) into milestones with exit criteria. The domain docs (02–08) define *what* each requirement is; this doc defines *when* and *in what order*. Effort numbers are rough and low-confidence until Phase 0 is done.
+> Status: **Draft v0.3** (2026-10-18; updated after the cross-doc consistency review). This turns the phases in [00 Vision & Scope](00-vision-and-scope.md) into milestones with exit criteria. The domain docs (02–08) define *what* each requirement is; this doc defines *when* and *in what order*. Effort numbers are rough and low-confidence until Phase 0 is done.
 
 ## Summary
 
@@ -17,7 +17,7 @@
 | One developer (the owner) builds Ubik with an AI coding assistant. Effort is in **focused weeks**: one person working full time for a week | Part-time work stretches calendar time roughly in proportion. Two developers shorten P1 by maybe a third, not half, because the core is tightly coupled |
 | Decisions in [10](10-decisions-and-open-questions.md) hold, especially "build a thin own core" (D-02) and "declarative strategies only in P1" (D-07) | If doc 02 §4.4's revisit trigger fires, re-evaluating NautilusTrader could change M2 and M3 |
 | The owner lives somewhere at least one recommended exchange is legally available | If not, Phase 0 must find a venue before M1 starts |
-| Spot trading only, long/flat, liquid majors, 1h–1d strategy bars on a 1-minute data base | Faster strategies need better data and fill models (P2 or later) |
+| Hyperliquid is the primary venue (D-45); positions at ≤ 1× effective leverage (HL spot or 1× isolated perps); paper shorts from P1; liquid majors only; strategy bars 5m–1h starting at 1h, on a 1-minute data base | Faster strategies need recorded order-book data and better fill models; the native Hyperliquid client adds effort to Phase 0, M1 and M10 |
 
 ## 2. Phase 0 — Decide and de-risk (about 2–3 focused weeks)
 
@@ -25,8 +25,8 @@
 |---|---|---|
 | **Owner decisions** | Answer the "before Phase 0 ends" questions in [10 §2](10-decisions-and-open-questions.md#2-open-questions-for-the-owner): country/tax residence, exchanges, trading horizon, distribution intent, hosting, budgets | Decisions recorded in doc 10 |
 | **Engine spike** (AR-028) | ≤ 2 weeks: try NautilusTrader v2 against the criteria in [06 §8.1](06-data-and-architecture.md). Which designs should Ubik's own core borrow? | Architecture decision record (ADR): design ideas to borrow and the revisit trigger (not an adoption gate) |
-| **Connectivity spike** | ccxt against the chosen venues: public WebSockets, REST backfill, rate limits, geo-blocking behavior, instrument rules, fee schedules | Adapter contract draft; venue registry entries |
-| **Data spike** | Download 5 years of 1-minute candles for 3 pairs (bulk files where available), write Parquet, query with DuckDB/polars, run quality checks | Measured storage and timings; data contract v1 |
+| **Connectivity spike** | Hyperliquid first: public WebSocket and REST feeds, signing test vectors on testnet, duplicate-cloid behavior, trigger orders and scheduleCancel, account-mode default, rate-limit behavior (IP and address budget). ccxt against Binance for the secondary/proxy data | Native Hyperliquid client design (D-47); adapter contract draft; venue registry entries |
+| **Data spike** | Hyperliquid funding history and maximum candle backfill; Binance perp/spot bulk history as proxy, with a basis check against Hyperliquid; write Parquet, query with DuckDB/polars, run quality checks | Measured storage and timings; proxy fidelity grades; data contract v1 |
 | **Indicator-engine spike** | Incremental (streaming) indicators vs TA-Lib batch output for ~5 indicators; truncation test for look-ahead | Choice: own engine or talipp-based |
 | **Skeleton and CI** | Repository layout, `uv` lockfiles, Docker Compose skeleton (Postgres+TimescaleDB, Valkey, engine/api/worker), CI with lint, type checks, tests, license check, secret scanning; ADR folder; `CLAUDE.md` for AI-assisted development | A green, empty pipeline |
 
@@ -41,7 +41,7 @@ Each slice is a vertical cut through data → engine → UI, so the owner can us
 | Area | Scope | Key requirements |
 |---|---|---|
 | Data | Live 1m candles and trades over WebSocket with REST fallback; ≥ 5 years of 1m backfill for the enabled venues; quick-start dataset downloaded during onboarding; daily instrument-rule snapshots; quality checks; explicit gap records; Parquet lake + Postgres | DA-001, DA-002, DA-004, DA-006, DA-009–DA-015, DA-018, DA-020, DA-023–DA-025, CMP-029 |
-| Recording | Start recording the data whose free history is short: funding, open interest, long/short ratios, dominance/breadth snapshots, top of book (analysis of it ships in P2) | MA-007, MA-011, PT-010 (see [03 §8](03-market-and-technical-analysis.md)) |
+| Recording | Hyperliquid recorder from day one (trades, order book, funding, mark/oracle prices, asset contexts; HL-032, HL-033) and proxy backfill (HL-034). Also record the data whose free history is short: funding, open interest, long/short ratios, dominance/breadth snapshots, top of book (analysis of it ships in P2) | MA-007, MA-011, PT-010 (see [03 §8](03-market-and-technical-analysis.md)) |
 | Indicators | One closed-bar incremental indicator engine with the P1 catalog (~20 indicators), parity tests against TA-Lib, truncation (look-ahead) harness | TA-001–TA-010, TA-026, TA-028 |
 | Chart | Candles/line, overlays, sub-panes, crosshair, data window, gap shading, timeframes 1m–1w | TA-013–TA-018 |
 | Platform | First-run bootstrap; login with passkey or password + TOTP; private-by-default networking; global PAPER bar with data freshness; structured logs, health endpoints, external heartbeat monitor; nightly backups; Docker Compose deploy; upgrade command with migrations | SEC-017–SEC-022, UX-013, AR-030–AR-032, AR-035, AR-036 |
@@ -57,6 +57,7 @@ Each slice is a vertical cut through data → engine → UI, so the owner can us
 | Order management and risk | Order state machine (event-sourced, persisted before "send"); risk engine with the Careful risk profile; position sizing; protective exits; bots and sleeves (incl. a Manual sleeve) | EX-001–EX-003, RK-001–RK-022, RK-035, PF-001, PF-002, PF-014 |
 | Backtester | Event-driven runs as worker jobs; reproducibility manifests; golden tests; trial ledger; out-of-sample vault; grid optimization ≤ 200 combinations | BT-016, BT-017, BT-021–BT-023, CAP-002, CAP-005, CAP-006, AR-014 |
 | Templates | First 3 templates: DCA, MA crossover, Donchian breakout | ST-011 (partial) |
+| Hyperliquid simulation | SimVenue Hyperliquid profile: fees, hourly funding, mark-price stops and liquidation, 1× pinning, fidelity grades on reports (HL-035–HL-037) | HL-035–HL-037 |
 | Report v1 | Plain-language summary, trust check, benchmark (buy-and-hold BTC, traded asset, cash), core metrics, trades on chart, honesty warnings above the numbers | BT-030, BT-034–BT-036, ED-002–ED-004, CAP-008 |
 
 **Exit:** golden tests reproduce known results exactly (G2). 1 year of 1m data backtests in ≤ 60 s on the reference machine (NFR-008). A newcomer can run a template backtest and read its report.
@@ -65,7 +66,7 @@ Each slice is a vertical cut through data → engine → UI, so the owner can us
 
 | Area | Scope | Key requirements |
 |---|---|---|
-| Paper venue | Same matching engine on live public data; no API keys; multiple paper accounts; reset/top-up | PT-001–PT-005, PT-013 |
+| Paper venue | Same matching engine on live Hyperliquid public data; no API keys; multiple paper accounts; reset/top-up; spot-vs-1×-perp vehicle comparison; 1× long and short; address rate budget simulated | PT-001–PT-005, PT-013 |
 | Resilience | Crash-safe, event-sourced state; restart recovery; reconciliation (paper); stale-data halts; reconnect and backfill; clock-drift checks | PT-007–PT-009, EX-004–EX-007, RK-026, RK-027, NFR-005, NFR-006 |
 | Safety controls | Trading states (ACTIVE / REDUCE_ONLY / HALTED); kill switch L1–L3 from UI, CLI and API; one-tap Pause-all; loss limits and drawdown breakers live | RK-004, RK-019–RK-024, UX-014, SEC-005 |
 | Visibility | Portfolio (with account-level performance), Risk center and Journal screens; plain-language reasons for every block; notifications in-app plus one external channel you set up and test; per-bot parity report | UX-008, UX-015, UX-016, RK-038, PF-015, AR-021, UX-036–UX-041, UX-054 |
@@ -106,13 +107,13 @@ Each slice is a vertical cut through data → engine → UI, so the owner can us
 
 | Milestone | Scope | Exit |
 |---|---|---|
-| **M10 Pre-live foundation** | Legal/tax consult if budgeted; decommission command with key revocation (SEC-042); webhook ingress only if TradingView-style signals are wanted (SEC-041); execution **gateway** as the only holder of exchange keys; encrypted key storage; refuse keys that can withdraw; IP allow-list; dedicated sub-account; arming flow (re-authentication, knowledge check, 24 h first-time cooling-off); live reconciliation with the exchange; exchange-native dead-man's switch where available; incident runbooks; tax-grade exports | Security review of the gateway passes; pre-live checklist ([05 §9.1](05-risk-portfolio-execution.md)) can be completed |
-| **M11 Staged rollout** | One strategy walks S1 Paper → S2 Exchange demo (≥ 7 days, or the adapter contract suite where the venue has no realistic demo) → S3 Shadow (≥ 14 days) → S4 Pilot (≤ $500, ≥ 30 days) → S5 Scaled; graduation scorecard; automatic demotion; TCA calibrates backtest cost assumptions | One strategy finishes S4 with no Critical incidents (G6: no strategy code changed between paper and live) |
+| **M10 Pre-live foundation** | Native Hyperliquid venue in the gateway (agent key only; master key on a hardware wallet), compensating controls (symbol allow-list, price bands, notional caps, 1× cap), public-address watcher, Restricted-Person jurisdiction gate, local watchdog dead-man's switch (adds ~2–4 weeks); legal/tax consult (Colombian contador) if budgeted; decommission command with key revocation (SEC-042); webhook ingress only if TradingView-style signals are wanted (SEC-041); execution **gateway** as the only holder of exchange keys; encrypted key storage; refuse keys that can withdraw; IP allow-list; dedicated sub-account; arming flow (re-authentication, knowledge check, 24 h first-time cooling-off); live reconciliation with the exchange; exchange-native dead-man's switch where available; incident runbooks; tax-grade exports | Security review of the gateway passes; pre-live checklist ([05 §9.1](05-risk-portfolio-execution.md)) can be completed |
+| **M11 Staged rollout** | One strategy walks S1 Paper → S2 Exchange demo (on Hyperliquid: ≥ 7 days of testnet conformance, then minimum-size mainnet round trips) → S3 Shadow (≥ 14 days) → S4 Pilot (≤ $500, ≥ 30 days) → S5 Scaled; graduation scorecard; automatic demotion; TCA calibrates backtest cost assumptions | One strategy finishes S4 with no Critical incidents (G6: no strategy code changed between paper and live) |
 
 ## 6. P4 — "Advanced" (options, not commitments)
 
 Pick from these based on what P1–P3 teach:
-- Derivatives and leverage behind extra guardrails, with Learn module 12.
+- Leverage above 1× on Hyperliquid perps (2× default, 3× hard ceiling) behind extra guardrails, with Learn module 12. (1× shorts already arrive in paper in P1 and live in P3 after the first pilot.)
 - ML research workbench with strict overfitting controls.
 - Multi-exchange execution and smart order routing.
 - Market-making **simulation** (live market making at retail fee tiers is a non-goal).
@@ -170,7 +171,8 @@ Treat these as ranges for planning conversations, not commitments. Re-estimate a
 |---|---|
 | P1 scope (~300 Musts) causes the MVP to stall | Vertical slices with usable exits; first-cut list (§7); phase discipline |
 | Own core proves harder than expected | Borrow designs recorded in the spike ADR (AR-028); re-evaluate NautilusTrader only on doc 02 §4.4's revisit trigger |
-| Jurisdiction rules out the preferred exchanges | Jurisdiction profiles and ≥ 2 venues from the start (AR-001) |
+| Jurisdiction rules out the preferred exchanges | Jurisdiction profiles and ≥ 2 venues from the start (AR-001); Hyperliquid Restricted-Person gate |
+| Native Hyperliquid adapter takes longer than planned, or Hyperliquid ships a breaking API change | Thin client behind the existing ports; signing test vectors; watch the official API channel; Binance stays available as a backup venue |
 | A data source changes or disappears | Self-recording from M1; source adapters; graceful degradation |
 | Paper results look better than live would | Conservative fills, daily parity replays, demo and shadow stages, tiny pilot |
 | Solo-developer burnout or bus factor | Small slices, ADRs, tests as documentation, AI-assisted development with `CLAUDE.md` |

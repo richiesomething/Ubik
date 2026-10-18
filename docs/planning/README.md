@@ -7,7 +7,7 @@ Initial planning for **Ubik**, a personal crypto trading platform: market and te
 1. [00 Vision & Scope](00-vision-and-scope.md): what Ubik is, its principles, goals and phases.
 2. [10 Decisions & Open Questions](10-decisions-and-open-questions.md): what's decided, and **the six questions you need to answer before development starts**.
 3. [09 Roadmap](09-roadmap.md): Phase 0, then P1 as five usable slices, then P2–P4.
-4. [01 Requirements Overview](01-requirements-overview.md): how the ~500 requirements fit together, the cross-cutting rules, and P1's definition of done.
+4. [01 Requirements Overview](01-requirements-overview.md): how the ~570 requirements fit together, the cross-cutting rules, and P1's definition of done.
 
 ## Domain specs (deep dives)
 
@@ -20,6 +20,7 @@ Initial planning for **Ubik**, a personal crypto trading platform: market and te
 | [06 Data & Architecture](06-data-and-architecture.md) | Exchanges, data sources, storage, system architecture, tech stack, deployment, non-functional targets | DA, AR, NFR |
 | [07 UX & Beginner Experience](07-ux-and-beginner-experience.md) | Personas, journeys, screens, Guided/Pro modes, education, AI assistant, ethical design | UX, ED |
 | [08 Security, Legal & Compliance](08-security-legal-compliance.md) | Threat model, API-key handling, app security, regulation, tax records, disclaimers, privacy | SEC, CMP |
+| [11 Hyperliquid Integration](11-hyperliquid-integration.md) | Hyperliquid as the primary venue: markets, ≤ 1× positions, agent-wallet security, data and proxy history, path to live, jurisdiction gate, risks | HL |
 | [Glossary](glossary.md) | Plain-language definitions of every term; the source for in-app tooltips | — |
 
 ## How these were made
