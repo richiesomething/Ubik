@@ -97,7 +97,7 @@ Each question has the **default Ubik plans around** until you answer. Answering 
 
 | ID | Question | Why it matters | Default if unanswered |
 |---|---|---|---|
-| Q-01 | **Which country (and US state, if any) do you live in and pay tax in?** | Decides which exchanges and pairs are legal for you, the quote currency, tax rules and export formats | Non-US, non-EEA profile; USD reference currency; no live trading until answered |
+| Q-01 | **Which country (and US state, if any) do you live in and pay tax in?** **Partly answered (2026-10-18): the owner is a Colombian citizen; residence/tax residence to confirm. Planning assumes Colombia-resident: Hyperliquid primary, Binance secondary.** | Decides which exchanges and pairs are legal for you, the quote currency, tax rules and export formats | Non-US, non-EEA profile; USD reference currency; no live trading until answered |
 | Q-02 | **Which exchanges do you have verified accounts on? Do they offer sub-accounts?** | Paper trading should use the venue you'll go live on (graduation requires it) | Binance public data for P1 paper trading, Coinbase as second venue |
 | Q-03 | **Will anyone else ever use Ubik** (friends, open-source release, paid product, SaaS)? When? | Drives license policy, data-source choices (some are non-commercial), and legal exposure | Personal use only, but keep the permissive-license policy (D-19) |
 | Q-04 | **What trading horizon interests you**: minutes, hours, days, or longer? | Fee drag, data needs, fill-model accuracy and which strategies make sense | 1h–1d bars (D-10) |
