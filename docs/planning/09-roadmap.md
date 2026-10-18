@@ -168,7 +168,7 @@ Treat these as ranges for planning conversations, not commitments. Re-estimate a
 
 | Risk | Mitigation |
 |---|---|
-| P1 scope (~280 Musts) causes the MVP to stall | Vertical slices with usable exits; first-cut list (§7); phase discipline |
+| P1 scope (~300 Musts) causes the MVP to stall | Vertical slices with usable exits; first-cut list (§7); phase discipline |
 | Own core proves harder than expected | Borrow designs recorded in the spike ADR (AR-028); re-evaluate NautilusTrader only on doc 02 §4.4's revisit trigger |
 | Jurisdiction rules out the preferred exchanges | Jurisdiction profiles and ≥ 2 venues from the start (AR-001) |
 | A data source changes or disappears | Self-recording from M1; source adapters; graceful degradation |
