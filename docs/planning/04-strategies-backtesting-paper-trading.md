@@ -8,7 +8,7 @@
 - **The event-driven backtester is the "official" result.** It replays history one event at a time, as live trading would. A fast *vectorized* screener (which computes whole price series at once) is added in P2 for big parameter sweeps, but every number shown as "the backtest" comes from the event-driven engine. Fills are conservative by default: never at the close of the bar that produced the signal, limit orders fill only when price trades *through* the limit, and stops are gap-aware. Fees come from versioned per-exchange schedules, exchange order rules are enforced, and money is computed with exact decimal arithmetic.
 - **Honesty is a product feature.** Ubik keeps a **trial ledger** (every strategy variant ever tried) and a locked **out-of-sample "vault"** (recent data never used for tuning). In P2 it adds overfitting statistics: the Deflated Sharpe Ratio and the Probability of Backtest Overfitting. Every report compares the strategy with buy-and-hold BTC and with cash, and plain-language warnings sit *above* the headline numbers.
 - **P1 offers seven explainable templates** (DCA, grid, MA crossover, Donchian breakout, RSI and Bollinger mean reversion, rebalancing) and a **no-code rule builder**, both compiling to the same engine. Python strategies come with automatic look-ahead and warm-up checks. P1 is spot-only, so strategies are long or flat. True long/short pairs trading and funding carry wait for derivatives in P4.
-- **Paper trading is the backtester's matching engine fed by live market data**, not an exchange testnet. Ubik records the live data it trades on and re-runs a daily **shadow backtest** over it to measure divergence. A strategy **graduates** to live (P3) only after a published checklist: ≥ 90 days, ≥ 30 round trips, ≥ 95 % signal match, results inside the backtest's expected range, and more. The checklist proves faithful *implementation*, not a real *edge*, and the UI says so.
+- **Paper trading is the backtester's matching engine fed by live market data**, not an exchange testnet. Ubik records the live data it trades on and re-runs a daily **shadow backtest** over it to measure divergence. A strategy **leaves paper** (stage S1 of doc 05's staged path to live) only after a published checklist: same version and venue throughout, ≥ 30 days and ≥ 20 round trips, ≥ 95 % signal match, cost model confirmed, results inside the backtest's expectation band, and more. The checklist proves faithful *implementation*, not a real *edge*, and the UI says so.
 
 Related docs: indicators in [03](03-market-and-technical-analysis.md); risk, sizing, the order management system (OMS) and execution in [05](05-risk-portfolio-execution.md); data and architecture in [06](06-data-and-architecture.md); screens and beginner mode in [07](07-ux-and-beginner-experience.md); sandboxing, AI safety and disclaimers in [08](08-security-legal-compliance.md).
 
@@ -357,7 +357,7 @@ Conventions: crypto trades every day of the year, so annualization uses **365 da
 5. Trades on the price chart, with entry and exit reasons in words.
 6. Monthly returns heatmap; distribution of trade returns.
 7. Rolling 90-day return and Sharpe.
-8. Gross vs net cost breakdown.
+8. Gross vs net cost breakdown, plus every order the risk engine reduced or denied, with the reason (doc 05 RK-006).
 9. Stress-test table; Monte Carlo bands.
 10. Parameter heatmap, PBO and DSR when optimized.
 11. **Assumptions** (fees, slippage, latency, fill rules) and the **reproducibility manifest**.
@@ -421,27 +421,29 @@ All live data consumed by paper runs is **recorded**. This enables the shadow ba
    - **Signal match rate:** a miss means a parity bug, a data difference or a timing problem.
    - **Fill difference** in basis points: the cost-model error, in the spirit of *implementation shortfall* (doc 05's transaction-cost analysis, TCA).
    - **PnL tracking error** between the two equity curves.
-2. **Expectation band:** compare paper results with the original backtest's Monte Carlo band for the same horizon, and alert if they fall outside the 5th–95th percentile.
+2. **Expectation band**, two uses:
+   - *Gate:* doc 05's definition. Paper per-trade returns must be no worse than the 10th percentile of a bootstrap of the backtest's trades, and drawdown must not exceed the backtest's worst.
+   - *Alert:* results outside the two-sided 5th–95th percentile Monte Carlo band (§6.3). Results that are suspiciously *good* are also investigated, because they often signal a bug.
 3. **Liquidity sanity:** alert if the participation cap binds often.
 
-### 8.5 Graduation criteria (paper → live, enforced in P3)
+### 8.5 Graduation criteria: leaving paper (stage S1 of doc 05's path to live)
+
+Doc 05 §9.1 owns the full staged path: S0 backtest → **S1 paper** → S2 exchange demo → S3 read-only shadow → S4 tiny-capital pilot → S5 scaled, with automatic demotion. This section defines in detail what S1 requires, so that the gate tests *parity* and not just profit.
 
 | Criterion | Default (beginner mode can't lower) | Why |
 |---|---|---|
 | Same strategy version | Only one version hash for the whole period; any change resets the clock | Evidence must be about the exact code going live |
 | Same venue | Paper on the intended live exchange, pair and fee tier | Liquidity, rules and availability differ by venue and jurisdiction |
-| Duration | ≥ 90 calendar days | Several market moods; operational issues surface |
-| Trades | ≥ 30 round trips (schedule-based strategies: ≥ 12 cycles) | A minimal sample |
+| Duration and trades | ≥ 30 calendar days **and** ≥ 20 round trips (doc 05 S1 floor). Schedule-based strategies (DCA, rebalancing) need ≥ 8 cycles instead | Minimal sample. Later stages S3 and S4 add another 44+ days before scaling |
 | Signal match with shadow backtest | ≥ 95 %, with every mismatch explained | Proves parity |
 | Cost-model accuracy | Mean fill difference ≤ 1.5 × modeled slippage | Backtest cost assumptions hold |
-| Consistency | Paper return and drawdown inside the backtest's 5–95 % Monte Carlo band | Detects broken assumptions rather than rewarding luck |
-| Max drawdown | ≤ the owner's risk budget (doc 05) and ≤ the backtest's 95th-percentile drawdown | Safety |
-| Backtest quality | OOS/walk-forward net Sharpe > 0; matches or beats buy-and-hold risk-adjusted (or the owner acknowledges it doesn't); DSR ≥ 0.95 and PBO ≤ 0.5 if optimized (P2+); ≥ 2 years of history including a bear phase | Paper can't rescue a weak backtest |
-| Operations | No unresolved incidents in the last 14 days; a restart recovery has succeeded; STALE handling has been exercised | Live is unforgiving |
-| Live readiness | Doc 05/08 gates: tiny initial capital, tested kill switch, API keys without withdrawal rights | Covered elsewhere |
-| Consent | Explicit confirmation screen (doc 07) | Informed decision |
+| Consistency | Doc 05's expectation-band gate (§8.4) | Catches strategies that only worked in hindsight |
+| Max drawdown | ≤ the owner's risk budget (doc 05) | Safety |
+| Backtest quality (S0) | ≥ 100 backtest trades (doc 05); OOS/walk-forward net Sharpe > 0; matches or beats buy-and-hold risk-adjusted (or the owner acknowledges it doesn't); DSR ≥ 0.95 and PBO ≤ 0.5 if optimized (P2+); history includes a bear phase | Paper can't rescue a weak backtest |
+| Operations | No unresolved incidents or reconciliation breaks in the last 14 days; ≥ 99 % uptime (doc 05); a restart recovery has succeeded; STALE handling has been exercised | Live is unforgiving |
+| Consent | Explicit owner approval (doc 07); promotion is never automatic | Informed decision |
 
-**Honesty note shown at graduation:** 90 days proves faithful *implementation*, not *profitability*. By the MinTRL formula, with normal returns, showing at 95 % confidence that a true annual Sharpe of 1.0 is above zero takes about **2.7 years** of daily returns (≈ (1.645 ÷ (1/√365))² ≈ 990 days), and longer with crypto's fat tails. P3 therefore starts with tiny capital.
+**Honesty note shown at graduation:** passing paper proves faithful *implementation*, not *profitability*. By the MinTRL formula, with normal returns, showing at 95 % confidence that a true annual Sharpe of 1.0 is above zero takes about **2.7 years** of daily returns (≈ (1.645 ÷ (1/√365))² ≈ 990 days), and longer with crypto's fat tails. P3 therefore starts with tiny capital.
 
 | ID | Requirement | Priority | Phase | Rationale / notes |
 |---|---|---|---|---|
@@ -456,10 +458,10 @@ All live data consumed by paper runs is **recorded**. This enables the shadow ba
 | PT-009 | Paper state (ledger, orders, strategy state) shall be event-sourced and crash-safe. Runs shall resume after a restart without duplicate or lost orders. | Must | P1 | Rehearses P3 recovery. |
 | PT-010 | Ubik shall record the live market data consumed by paper runs (trades, top of book and, where available, L2). | Should | P1 | Shadow backtests; future high-fidelity backtests. |
 | PT-011 | Ubik shall run a daily shadow backtest per paper run, reporting signal match rate, fill difference (bps) and PnL tracking error. | Should | P1 (Must P2) | Measures real parity. |
-| PT-012 | Ubik shall alert when paper performance leaves the backtest's 5–95 % Monte Carlo band for the elapsed horizon. | Should | P2 | Early divergence warning. |
+| PT-012 | Ubik shall alert when paper performance leaves the backtest's two-sided 5–95 % Monte Carlo band for the elapsed horizon, and shall evaluate doc 05's one-sided expectation-band gate. | Should | P2 | Early divergence warning; "too good" is investigated too. |
 | PT-013 | All paper results shall be labeled "Simulated" in the UI, reports and exports, and shall never be aggregated with live results. | Must | P1 | Honesty; doc 08. |
-| PT-014 | Ubik shall display each paper run's progress against the §8.5 criteria. | Should | P2 | Visible goal-posts before P3. |
-| PT-015 | Ubik shall block live trading for any strategy version that hasn't met §8.5. Overrides shall exist only in pro mode with a logged justification, and never for the duration or same-version criteria. | Must | P3 | Core path-to-live safety. |
+| PT-014 | Ubik shall display each paper run's progress against the §8.5 criteria. | Should | P2 | Feeds doc 05's graduation scorecard (EX-026). |
+| PT-015 | Ubik shall block promotion beyond S1 for any strategy version that hasn't met §8.5. Overrides shall exist only in pro mode with a logged justification, and never for the duration, trade-count or same-version criteria. | Must | P3 | Core path-to-live safety. |
 | PT-016 | Exchange demo or testnet environments shall be used only to verify the live adapter's order lifecycle, never as graduation evidence. | Should | P3 | Testnet prices aren't real. |
 
 ---
@@ -469,7 +471,7 @@ All live data consumed by paper runs is **recorded**. This enables the shadow ba
 1. **Which exchange will you trade on live, and from which country?** Graduation requires paper trading on the intended venue, and availability differs by jurisdiction (e.g. Binance vs Binance.US). Your fee tier also determines which strategies are viable at all.
 2. **Do you want to write Python yourself in P1**, or are templates and the rule builder enough at first? This decides whether ST-017 is P1 or P2.
 3. **What drawdown could you tolerate on real money** (−10 %, −20 %, −35 %)? It sets the default risk budget used in warnings and graduation.
-4. **Are 90 days and 30 trades acceptable graduation defaults**, given they slow down going live? Should DCA and rebalancing strategies get a separate, schedule-based track?
+4. **Is the paper floor long enough?** The defaults are 30 days and 20 trades, followed by exchange demo, read-only shadow and a tiny-capital pilot (doc 05), about 80+ days before scaling. A beginner may prefer a 90-day paper period before *any* real money. Should DCA and rebalancing strategies keep the separate schedule-based track?
 5. **Grid bots in P1?** Recommended, with the ST-014 safeguards.
 6. **Will strategies or results ever be shown to other people** (friends, a community, P4 SaaS)? Publishing hypothetical performance can be regulated, so doc 08 needs to know.
 7. **Pay for historical tick or L2 data later (P2)**, or rely on Ubik's own recordings from P1?
@@ -483,7 +485,7 @@ All live data consumed by paper runs is **recorded**. This enables the shadow ba
 | **Fill-model error**: bar data hides queue position and intrabar order | Profit misestimated, especially for grids and limit-order strategies | Conservative defaults; cost ×2; recorded tick/L2 data; calibration from paper fills |
 | **Stale fees and rules** (e.g. Kraken's July 2026 change) | Wrong cost assumptions | Effective-dated data; daily rule snapshots; warning when a schedule is > 90 days old |
 | **Scope creep** ("everything pro firms do") | P1 slips | Reuse a proven engine core (doc 02); P1 limited to 1m simulation and 7 templates |
-| **Third-party engine dependency** (NautilusTrader v1→v2 transition and LGPL; vectorbt Commons Clause for SaaS) | Rework or licensing friction | Thin adapter around the engine; license review (docs 02/08) |
+| **Engine choice**: an own thin core risks simulator bugs; adopting NautilusTrader risks v2 churn and LGPL obligations | False confidence, or rework | Golden and differential tests (§4.5); the doc 02 spike; Ubik's own strategy API kept as a thin layer over whichever engine wins |
 | **AI assistant as an overfitting machine** | Inflated results | Trial ledger counts AI variants; DSR; assistant can't start runs |
 | **Regime dependence**: tuned on the 2023–25 bull, deployed into the 2025–26 bear | Drawdowns beyond expectations | Stress library; regime warnings; walk-forward |
 | **Exchange failure** (FTX-type), invisible to any backtest | Loss of funds held on the venue | Venue limits (doc 05); security (doc 08) |

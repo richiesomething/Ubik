@@ -98,15 +98,12 @@ Design notes:
 
 ### 2.3 From template to review
 
-| Step | What Ubik does |
-|---|---|
-| Learn basics | Three ≤ 5-minute lessons ("What is a candle?", "Fees and slippage", "Why most traders lose"), each ending with a "Try it" link into the app |
-| Explore a market | Guided tour of the BTC/USDT chart (candles, volume, timeframe, one indicator) plus a plain summary, e.g. "BTC is up 4.2% this week; volatility is high compared with the last 90 days" |
-| Pick a template | Library cards show the idea, when it works, **when it fails** and how often it trades. Buy-and-hold and DCA are always listed as honest baselines. |
-| Backtest | Sensible defaults: the last 3–4 years, realistic fees and slippage (doc 04), and a benchmark |
-| Understand | Report opens with the plain story, then the trust check, then details (wireframe §3.3) |
-| Paper trade | Review screen covering rules, pair, timeframe, limits, cost model and trust result, then deploy under the PAPER label |
-| Monitor and review | Journal explains each bot action. A weekly review compares paper results with the backtest's expected range and prompts reflection, not more trading. |
+- **Learn basics:** three lessons of ≤ 5 minutes each ("What is a candle?", "Fees and slippage", "Why most traders lose"), each ending in a "Try it" link.
+- **Explore a market:** a guided BTC/USDT chart tour with a plain summary, e.g. "BTC is up 4.2% this week; volatility is high compared with the last 90 days".
+- **Pick a template:** see UX-022.
+- **Backtest:** defaults to the last 3–4 years, realistic costs (doc 04) and a benchmark. The report is wireframed in §3.3.
+- **Paper trade:** deploy via a review screen (UX-006).
+- **Monitor and review:** the Journal explains every action (UX-016), and the weekly review (UX-012) compares paper results with the backtest's expected range.
 
 ### 2.4 Graduating to live (P3)
 
